@@ -159,11 +159,22 @@ export const ModalsContainer: React.FC<ModalsContainerProps> = ({
                 </button>
                 <button
                   onClick={() => {
-                    setWorkspaceCards(
-                      workspaceCards.map((c) =>
-                        c.id === editingCardId ? { ...c, ...cardFormData } : c,
-                      ),
-                    );
+                    const finalCard = {
+                      ...cardFormData,
+                      id: editingCardId ?? Date.now().toString(),
+                      title: cardFormData.title?.trim() || "Novo Card",
+                    };
+
+                    if (editingCardId) {
+                      setWorkspaceCards(
+                        workspaceCards.map((c) =>
+                          c.id === editingCardId ? { ...c, ...finalCard } : c,
+                        ),
+                      );
+                    } else {
+                      setWorkspaceCards([...workspaceCards, finalCard]);
+                    }
+
                     setWorkspaceModalOpen(false);
                   }}
                   className="px-4 py-2 rounded-lg text-xs font-medium bg-zinc-700 text-white hover:bg-zinc-600 transition-colors"

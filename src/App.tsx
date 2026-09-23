@@ -1,6 +1,6 @@
 import React from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Settings, Info, Youtube, Play } from "lucide-react";
+import { Settings, Info, Youtube, Play, Plus } from "lucide-react";
 import { useAppLogic } from "./hooks/useAppLogic";
 import { themeClasses, ThemePreference } from "./constants/themeClasses";
 import { webEngines, otherEngines } from "./constants/engines";
@@ -313,6 +313,22 @@ export default function App() {
               {(logic.activeEngineId === "youtube" ||
                 logic.activeEngineId === "workspace") && (
                 <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {logic.activeEngineId === "workspace" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        logic.setCardFormData({ title: "", url: "", icon: "", image: "" });
+                        logic.setEditingCardId(null);
+                        logic.setWorkspaceModalOpen(true);
+                      }}
+                      className={`flex items-center justify-center w-[42px] h-[42px] rounded-[14px] backdrop-blur-xl transition-all border hover:-translate-y-0.5 ${tc.searchBoxBg} ${tc.searchBoxBorder} ${tc.buttonText} ${tc.buttonHoverBg}`}
+                      title="Adicionar card"
+                      aria-label="Adicionar card ao workspace"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  )}
+
                   <button
                     type="button"
                     onClick={() =>
@@ -320,6 +336,7 @@ export default function App() {
                     }
                     className={`flex items-center justify-center w-[42px] h-[42px] rounded-[14px] backdrop-blur-xl transition-all border hover:-translate-y-0.5 ${tc.searchBoxBg} ${tc.searchBoxBorder} ${tc.buttonText} ${tc.buttonHoverBg}`}
                     title="Configurações"
+                    aria-label="Abrir configurações"
                   >
                     <Settings className="w-4 h-4" />
                   </button>
@@ -365,6 +382,34 @@ export default function App() {
               <YoutubeTutorialContent />
             </motion.div>
           )}
+
+        {!logic.isAiMode && logic.activeEngineId === "youtube" && (
+          <div className="w-full max-w-6xl mt-4">
+            {!logic.youtubeApiKey ? (
+              <div className="mb-4 rounded-2xl border border-red-500/40 bg-red-500/10 p-4 text-sm">
+                <p className="font-semibold text-red-300">YouTube não carregou</p>
+                <p className="mt-1 text-red-100/90">
+                  A propriedade <strong>youtubeApiKey</strong> está vazia ou não foi carregada corretamente.
+                </p>
+                <p className="mt-2 text-red-100/80">
+                  Abra a configuração do YouTube e cole a sua chave da API do Google Cloud.
+                </p>
+              </div>
+            ) : logic.youtubeStatus.type === "error" ? (
+              <div className="mb-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+                <p className="font-semibold text-amber-300">Diagnóstico do YouTube</p>
+                <p className="mt-1 text-amber-100/90">{logic.youtubeStatus.message}</p>
+                <p className="mt-2 text-amber-100/80">{logic.youtubeStatus.details}</p>
+              </div>
+            ) : logic.youtubeStatus.type === "loading" ? (
+              <div className="mb-4 rounded-2xl border border-blue-500/40 bg-blue-500/10 p-4 text-sm">
+                <p className="font-semibold text-blue-300">Carregando vídeos...</p>
+                <p className="mt-1 text-blue-100/90">{logic.youtubeStatus.message}</p>
+                <p className="mt-2 text-blue-100/80">{logic.youtubeStatus.details}</p>
+              </div>
+            ) : null}
+          </div>
+        )}
 
         {!logic.isAiMode &&
           logic.activeEngineId === "youtube" &&
@@ -424,8 +469,7 @@ export default function App() {
       />
 
       <style>{`
-        @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
-        :root { font-family: 'Pretendard', sans-serif; }
+        :root { font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>

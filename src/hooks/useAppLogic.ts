@@ -67,6 +67,11 @@ export const useAppLogic = () => {
   const [isContentLoading, setIsContentLoading] = useState(false);
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
   const [hasPerformedSearch, setHasPerformedSearch] = useState(false);
+  const [youtubeStatus, setYoutubeStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error'; message: string; details: string }>({
+    type: 'idle',
+    message: 'Aguardando ação do usuário.',
+    details: 'Nenhuma busca foi executada ainda.'
+  });
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [userSubscriptions, setUserSubscriptions] = useState<Subscription[]>(() => {
     const savedSubscriptions = localStorage.getItem('userSubscriptions');
@@ -140,22 +145,86 @@ export const useAppLogic = () => {
     setUserSubscriptions(prev => prev.some(s => s.id === channel.id) ? prev.filter(s => s.id !== channel.id) : [...prev, channel]);
   }, []);
 
+  const formatYouTubeError = useCallback((error: unknown) => {
+    const raw = error instanceof Error ? error.message : String(error || 'Erro desconhecido');
+    const text = raw.toLowerCase();
+
+    if (!youtubeApiKey || youtubeApiKey.trim() === '') {
+      return {
+        message: 'A chave do YouTube está vazia.',
+        details: 'Insira a chave em Configurações > YouTube API Key.'
+      };
+    }
+
+    if (text.includes('quota') || text.includes('daily limit') || text.includes('rate limit')) {
+      return {
+        message: 'A API do YouTube excedeu a cota.',
+        details: 'Verifique o limite de uso no Google Cloud Console.'
+      };
+    }
+
+    if (text.includes('forbidden') || text.includes('403') || text.includes('permission') || text.includes('disabled')) {
+      return {
+        message: 'A API do YouTube foi bloqueada ou está desativada.',
+        details: 'Confirme se a YouTube Data API v3 está ativada e se a chave não está bloqueada por IP/restrição.'
+      };
+    }
+
+    if (text.includes('key') || text.includes('api key') || text.includes('invalid key') || text.includes('authentication')) {
+      return {
+        message: 'A chave do YouTube está inválida ou rejeitada.',
+        details: 'Verifique se a chave foi copiada corretamente e se ela pertence ao projeto correto.'
+      };
+    }
+
+    return {
+      message: 'A busca do YouTube falhou.',
+      details: raw
+    };
+  }, [youtubeApiKey]);
+
   const loadUserSubscriptionFeed = useCallback(async () => {
-    if (!youtubeApiKey || userSubscriptions.length === 0) return;
+    if (!youtubeApiKey || youtubeApiKey.trim() === '') {
+      setYoutubeStatus({
+        type: 'error',
+        message: 'A chave do YouTube está vazia.',
+        details: 'Insira a chave em Configurações > YouTube API Key.'
+      });
+      return;
+    }
+
+    if (userSubscriptions.length === 0) {
+      setYoutubeStatus({
+        type: 'success',
+        message: 'Você ainda não segue canais.',
+        details: 'Adicione canais para o feed aparecer aqui.'
+      });
+      return;
+    }
+
     setIsContentLoading(true);
     setIsViewingFeed(true);
     setHasPerformedSearch(true);
     setVideoResultsList([]);
+    setYoutubeStatus({ type: 'loading', message: 'Carregando vídeos do feed...', details: 'Buscando os últimos vídeos dos canais seguidos.' });
+
     try {
       const feedData = await fetchYouTubeFeed(userSubscriptions.map(sub => sub.id), youtubeApiKey);
       setVideoResultsList(feedData.items);
       setNextPageToken(feedData.nextPageToken);
+      setYoutubeStatus({
+        type: feedData.items.length > 0 ? 'success' : 'idle',
+        message: feedData.items.length > 0 ? 'Feed carregado com sucesso.' : 'Nenhum vídeo foi encontrado neste feed.',
+        details: feedData.items.length > 0 ? 'Os vídeos do feed apareceram na interface.' : 'Pode ser que os canais não tenham vídeos públicos recentes.'
+      });
     } catch (error) {
+      const parsed = formatYouTubeError(error);
+      setYoutubeStatus({ type: 'error', message: parsed.message, details: parsed.details });
       console.error(error);
     } finally {
       setIsContentLoading(false);
     }
-  }, [youtubeApiKey, userSubscriptions]);
+  }, [youtubeApiKey, userSubscriptions, formatYouTubeError]);
 
   useEffect(() => {
     if (activeEngineId === 'youtube' && youtubeApiKey && userSubscriptions.length > 0 && !hasPerformedSearch) {
@@ -315,6 +384,7 @@ export const useAppLogic = () => {
       setChannelResultsList([]);
       setHasPerformedSearch(true);
       setSelectedChannelId(null);
+      setYoutubeStatus({ type: 'loading', message: 'Buscando vídeos no YouTube...', details: `Consulta: ${searchQuery}` });
       try {
         const [channelsData, videosData] = await Promise.all([
           fetchYouTubeChannels(searchQuery, youtubeApiKey),
@@ -323,7 +393,14 @@ export const useAppLogic = () => {
         setChannelResultsList(channelsData);
         setVideoResultsList(videosData.items);
         setNextPageToken(videosData.nextPageToken);
+        setYoutubeStatus({
+          type: videosData.items.length > 0 ? 'success' : 'idle',
+          message: videosData.items.length > 0 ? 'Busca concluída com sucesso.' : 'Nenhum vídeo encontrado para esta busca.',
+          details: videosData.items.length > 0 ? 'Os cards de vídeo foram carregados.' : 'Tente outra palavra-chave ou verifique a chave da API.'
+        });
       } catch (error) {
+        const parsed = formatYouTubeError(error);
+        setYoutubeStatus({ type: 'error', message: parsed.message, details: parsed.details });
         console.error(error);
       } finally {
         setIsContentLoading(false);
@@ -351,6 +428,7 @@ export const useAppLogic = () => {
   const loadMoreVideos = useCallback(async () => {
     if (!nextPageToken || isContentLoading || !youtubeApiKey) return;
     setIsContentLoading(true);
+    setYoutubeStatus({ type: 'loading', message: 'Carregando mais vídeos...', details: 'Buscando próxima página do YouTube.' });
     try {
       let moreVideosData;
       if (selectedChannelId) {
@@ -360,12 +438,19 @@ export const useAppLogic = () => {
       }
       setVideoResultsList(prev => [...prev, ...moreVideosData.items]);
       setNextPageToken(moreVideosData.nextPageToken);
+      setYoutubeStatus({
+        type: moreVideosData.items.length > 0 ? 'success' : 'idle',
+        message: moreVideosData.items.length > 0 ? 'Mais vídeos carregados.' : 'Nenhum vídeo adicional foi encontrado.',
+        details: 'A próxima página foi consultada com sucesso.'
+      });
     } catch (error) {
+      const parsed = formatYouTubeError(error);
+      setYoutubeStatus({ type: 'error', message: parsed.message, details: parsed.details });
       console.error(error);
     } finally {
       setIsContentLoading(false);
     }
-  }, [nextPageToken, isContentLoading, youtubeApiKey, selectedChannelId, searchQuery]);
+  }, [nextPageToken, isContentLoading, youtubeApiKey, selectedChannelId, searchQuery, formatYouTubeError]);
 
   const handleExportData = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
@@ -414,6 +499,7 @@ export const useAppLogic = () => {
     cardFormData, setCardFormData, exportDataModalOpen, setExportDataModalOpen, exportDataJson, youtubeTutorialModalOpen, setYoutubeTutorialModalOpen,
     menuContainerRef, fileInputRef, fileInputAiRef, chatContainerRef, searchInputRef, messagesEndRef,
     currentAppliedTheme, currentActiveEngine, handleChatScroll, toggleChannelSubscription, handleFileAttachment,
-    executeSearch, handleChannelSelection, loadMoreVideos, handleExportData, handleImportData, nextPageToken
+    executeSearch, handleChannelSelection, loadMoreVideos, handleExportData, handleImportData, nextPageToken,
+    youtubeStatus
   };
 };

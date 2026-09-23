@@ -37,6 +37,7 @@ export const WorkspaceSection: React.FC<WorkspaceSectionProps> = ({
                     setEditingCardId(card.id);
                     setWorkspaceModalOpen(true);
                   }}
+                  aria-label={`Configurar card ${card.title}`}
                   className="absolute top-2 right-2 p-2 rounded-full backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 hover:bg-black/70 text-white z-10"
                 >
                   <Settings className="w-4 h-4" />
@@ -57,8 +58,10 @@ export const WorkspaceSection: React.FC<WorkspaceSectionProps> = ({
         </AnimatePresence>
       </div>
       {workspaceCards.length === 0 && (
-        <div className={`text-center mt-20 text-[0.85rem] ${tc.text} opacity-50`}>
-          Use "add: Nome do Site" na barra de pesquisa para criar um novo card no workspace.
+        <div className="mt-10 text-center">
+          <p className={`text-[0.85rem] ${tc.text} opacity-50`}>
+            Use "add: Nome do Site" na barra de pesquisa para criar um novo card no workspace.
+          </p>
         </div>
       )}
     </motion.div>
