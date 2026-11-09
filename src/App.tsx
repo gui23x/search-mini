@@ -1,6 +1,26 @@
 import React from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Settings, Info, Youtube, Play, Plus } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Circle,
+  Code2,
+  Database,
+  Download,
+  Github,
+  Instagram,
+  Linkedin,
+  Monitor,
+  Moon,
+  Palette,
+  Settings,
+  Info,
+  Sun,
+  Upload,
+  Youtube,
+  Play,
+  Plus,
+} from "lucide-react";
 import { useAppLogic } from "./hooks/useAppLogic";
 import { themeClasses, ThemePreference } from "./constants/themeClasses";
 import { webEngines, otherEngines } from "./constants/engines";
@@ -16,9 +36,48 @@ import VideoModal from "./components/VideoModal";
 export default function App() {
   const logic = useAppLogic();
   const tc = themeClasses[logic.currentAppliedTheme];
+  const [isCreditsSubmenuOpen, setIsCreditsSubmenuOpen] = React.useState(false);
+  const menuSurfaceClass = `${tc.bg} ${
+    logic.currentAppliedTheme === "light" ||
+    logic.currentAppliedTheme === "pastel"
+      ? "border-[#c2b3a3]"
+      : "border-white/20"
+  } transition-colors duration-500`;
+  const menuItemHoverClass = `${tc.buttonHoverBg} ${tc.buttonHoverText} transition-colors cursor-pointer`;
+  const selectedIndicatorClass =
+    logic.currentAppliedTheme === "light" ||
+    logic.currentAppliedTheme === "pastel"
+      ? "before:bg-[#8a8a8a]"
+      : "before:bg-white/80";
+  const menuShadowClass =
+    logic.currentAppliedTheme === "light" ||
+    logic.currentAppliedTheme === "pastel"
+      ? "shadow-lg shadow-[#5c5c5c]/10"
+      : "shadow-lg shadow-black/20";
+  const themeIcons: Record<ThemePreference, React.ReactNode> = {
+    system: <Monitor className="h-[17px] w-[17px] opacity-70" />,
+    light: <Sun className="h-[17px] w-[17px] opacity-70" />,
+    dark: <Moon className="h-[17px] w-[17px] opacity-70" />,
+    black: <Circle className="h-[17px] w-[17px] opacity-70" />,
+    pastel: <Palette className="h-[17px] w-[17px] opacity-70" />,
+  };
   const filteredWorkspaceCards = logic.workspaceCards.filter((card) =>
     card.title.toLowerCase().includes(logic.searchQuery.toLowerCase()),
   );
+  const isWebEngineSelected = webEngines.some(
+    (engine) => engine.id === logic.activeEngineId,
+  );
+  const selectEngine = (engineId: string) => {
+    logic.setActiveEngineId(engineId);
+    logic.setIsAiMode(false);
+    logic.setIsMenuOpen(false);
+    logic.setIsSubmenuOpen(false);
+    logic.setIsThemeSubmenuOpen(false);
+    logic.setIsDataSubmenuOpen(false);
+    setIsCreditsSubmenuOpen(false);
+  };
+  const isTouchInput = () =>
+    typeof window !== "undefined" && window.matchMedia("(hover: none)").matches;
 
   const YoutubeTutorialContent = () => (
     <div
@@ -81,7 +140,7 @@ export default function App() {
 
   return (
     <div
-      className={`min-h-screen overflow-x-hidden ${tc.bg} ${tc.text} ${tc.selection}`}
+      className={`min-h-screen overflow-x-hidden transition-colors duration-500 ${tc.bg} ${tc.text} ${tc.selection}`}
     >
       <input
         type="file"
@@ -111,169 +170,346 @@ export default function App() {
                 <div className="relative" ref={logic.menuContainerRef}>
                   <button
                     type="button"
-                    onClick={() => logic.setIsMenuOpen(!logic.isMenuOpen)}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all text-[0.85rem] font-medium ${tc.buttonText} ${tc.buttonHoverBg} ${tc.buttonHoverText}`}
+                    aria-expanded={logic.isMenuOpen}
+                    aria-haspopup="menu"
+                    onClick={() => {
+                      logic.setIsMenuOpen(!logic.isMenuOpen);
+                      logic.setIsSubmenuOpen(false);
+                      logic.setIsThemeSubmenuOpen(false);
+                      logic.setIsDataSubmenuOpen(false);
+                      setIsCreditsSubmenuOpen(false);
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all text-[0.85rem] font-medium ${tc.buttonText} ${tc.buttonHoverBg} ${tc.buttonHoverText}`}
                   >
                     <span>{logic.currentActiveEngine.name}</span>
+                    <ChevronDown
+                      className={`h-3.5 w-3.5 opacity-60 transition-transform ${logic.isMenuOpen ? "rotate-180" : ""}`}
+                    />
                   </button>
 
                   <AnimatePresence>
                     {logic.isMenuOpen && (
                       <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                        className={`absolute top-[calc(100%+12px)] left-0 w-[200px] rounded-xl p-1.5 backdrop-blur-[25px] z-10 ${tc.menuBg} ${tc.menuBorder} ${tc.menuShadow}`}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        role="menu"
+                        className={`absolute top-[calc(100%+10px)] -left-3.5 z-30 w-[min(218px,calc(100vw-16px))] rounded-[20px] border p-2.5 ${menuShadowClass} ${menuSurfaceClass}`}
                       >
                         <div
-                          className="relative group/submenu"
-                          onMouseEnter={() => logic.setIsSubmenuOpen(true)}
-                          onMouseLeave={() => logic.setIsSubmenuOpen(false)}
+                          className="relative"
+                          onMouseEnter={() => {
+                            if (!isTouchInput()) logic.setIsSubmenuOpen(true);
+                          }}
+                          onMouseLeave={() => {
+                            if (!isTouchInput()) logic.setIsSubmenuOpen(false);
+                          }}
                         >
-                          <div
-                            className={`flex items-center justify-between px-3 py-2.5 text-[0.85rem] rounded-lg cursor-pointer ${tc.buttonText} ${tc.buttonHoverBg} ${tc.buttonHoverText}`}
+                          <button
+                            type="button"
+                            aria-haspopup="menu"
+                            aria-expanded={logic.isSubmenuOpen}
+                            onFocus={() => {
+                              if (!isTouchInput()) logic.setIsSubmenuOpen(true);
+                            }}
+                            onClick={() => {
+                              if (isTouchInput()) {
+                                logic.setIsSubmenuOpen(!logic.isSubmenuOpen);
+                              }
+                            }}
+                            className={`relative w-full flex items-center justify-between px-3 py-2.5 pl-4 text-left text-[0.85rem] rounded-xl ${isWebEngineSelected ? `${tc.text} ${tc.channelCardSelectedBg}` : tc.buttonText} ${menuItemHoverClass} focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-current before:absolute before:left-2 before:top-2 before:bottom-2 before:w-1 before:rounded-full ${isWebEngineSelected ? selectedIndicatorClass : "before:bg-transparent"}`}
                           >
-                            <span>Pesquisa Web</span>
-                            <span className="text-[0.7rem] opacity-50">›</span>
-                          </div>
+                            <span className="flex min-w-0 flex-col items-start">
+                              <span>Web</span>
+                              {isWebEngineSelected && (
+                                <span className="text-[0.68rem] opacity-55">
+                                  {logic.currentActiveEngine.name}
+                                </span>
+                              )}
+                            </span>
+                            <ChevronRight className="h-[17px] w-[17px] opacity-50" />
+                          </button>
                           <AnimatePresence>
                             {logic.isSubmenuOpen && (
                               <motion.div
-                                initial={{ opacity: 0, x: -10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -10 }}
-                                className={`absolute top-0 left-[calc(100%+8px)] w-[160px] rounded-xl p-1.5 backdrop-blur-[25px] ${tc.menuBg} ${tc.menuBorder} ${tc.menuShadow}`}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute left-0 top-full z-40 w-[min(174px,calc(100vw-24px))] pt-1.5 sm:left-full sm:top-0 sm:pt-0 sm:pl-4"
                               >
-                                {webEngines.map((engine) => (
-                                  <button
-                                    key={engine.id}
-                                    type="button"
-                                    onClick={() => {
-                                      logic.setActiveEngineId(engine.id);
-                                      logic.setIsAiMode(false);
-                                      logic.setIsMenuOpen(false);
-                                      logic.setIsSubmenuOpen(false);
-                                    }}
-                                    className={`w-full flex items-center justify-between px-3 py-2 text-[0.8rem] rounded-lg transition-all ${tc.buttonHoverBg} ${logic.activeEngineId === engine.id ? `${tc.text} font-medium` : tc.buttonText}`}
-                                  >
-                                    <span className="flex items-center gap-2">
-                                      {engine.icon}
-                                      {engine.name}
-                                    </span>
-                                  </button>
-                                ))}
+                                <div
+                                  role="menu"
+                                  className={`rounded-[18px] border p-1.5 ${menuShadowClass} ${menuSurfaceClass}`}
+                                >
+                                  {webEngines.map((engine) => {
+                                    const selected =
+                                      logic.activeEngineId === engine.id;
+                                    return (
+                                      <button
+                                        key={engine.id}
+                                        type="button"
+                                        role="menuitem"
+                                        onClick={() => selectEngine(engine.id)}
+                                        className={`relative w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[0.8rem] ${selected ? `${tc.text} ${tc.channelCardSelectedBg} font-medium` : tc.buttonText} ${menuItemHoverClass} focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-current before:absolute before:left-2 before:top-2 before:bottom-2 before:w-1 before:rounded-full ${selected ? selectedIndicatorClass : "before:bg-transparent"} [&>svg]:h-[17px] [&>svg]:w-[17px]`}
+                                      >
+                                        {engine.icon}
+                                        {engine.name}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
                               </motion.div>
                             )}
                           </AnimatePresence>
                         </div>
 
-                        {otherEngines.map((engine) => (
-                          <button
-                            key={engine.id}
-                            type="button"
-                            onClick={() => {
-                              logic.setActiveEngineId(engine.id);
-                              logic.setIsAiMode(false);
-                              logic.setIsMenuOpen(false);
-                            }}
-                            className={`w-full flex items-center justify-between px-3 py-2.5 text-[0.85rem] rounded-lg transition-all ${tc.buttonHoverBg} ${logic.activeEngineId === engine.id ? `${tc.text} font-medium` : tc.buttonText}`}
-                          >
-                            <span className="flex items-center gap-2">
+                        {otherEngines.map((engine) => {
+                          const selected = logic.activeEngineId === engine.id;
+                          return (
+                            <button
+                              key={engine.id}
+                              type="button"
+                              role="menuitem"
+                              onClick={() => selectEngine(engine.id)}
+                              className={`relative w-full flex items-center gap-2.5 px-3 py-2.5 pl-4 text-left text-[0.85rem] rounded-xl ${selected ? `${tc.text} ${tc.channelCardSelectedBg} font-medium` : tc.buttonText} ${menuItemHoverClass} focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-current before:absolute before:left-2 before:top-2 before:bottom-2 before:w-1 before:rounded-full ${selected ? selectedIndicatorClass : "before:bg-transparent"} [&>svg]:h-[17px] [&>svg]:w-[17px]`}
+                            >
                               {engine.icon}
                               {engine.name}
-                            </span>
-                          </button>
-                        ))}
+                            </button>
+                          );
+                        })}
 
                         <div
-                          className={`my-1 border-t ${tc.settingsDivider}`}
+                          className={`my-2 border-t ${tc.settingsDivider}`}
                         />
                         <div
-                          className="relative group/theme-submenu"
-                          onMouseEnter={() => logic.setIsThemeSubmenuOpen(true)}
-                          onMouseLeave={() =>
-                            logic.setIsThemeSubmenuOpen(false)
-                          }
+                          className="relative"
+                          onMouseEnter={() => {
+                            if (!isTouchInput())
+                              logic.setIsThemeSubmenuOpen(true);
+                          }}
+                          onMouseLeave={() => {
+                            if (!isTouchInput())
+                              logic.setIsThemeSubmenuOpen(false);
+                          }}
                         >
-                          <div
-                            className={`flex items-center justify-between px-3 py-2.5 text-[0.85rem] rounded-lg cursor-pointer ${tc.buttonText} ${tc.buttonHoverBg} ${tc.buttonHoverText}`}
+                          <button
+                            type="button"
+                            aria-haspopup="menu"
+                            aria-expanded={logic.isThemeSubmenuOpen}
+                            onFocus={() => {
+                              if (!isTouchInput())
+                                logic.setIsThemeSubmenuOpen(true);
+                            }}
+                            onClick={() => {
+                              if (isTouchInput()) {
+                                logic.setIsThemeSubmenuOpen(
+                                  !logic.isThemeSubmenuOpen,
+                                );
+                              }
+                            }}
+                            className={`flex w-full items-center justify-between px-3 py-2.5 text-left text-[0.85rem] rounded-xl ${tc.buttonText} ${menuItemHoverClass} focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-current`}
                           >
-                            <span>Tema</span>
-                            <span className="text-[0.7rem] opacity-50">›</span>
-                          </div>
+                            <span className="flex items-center gap-2.5">
+                              <Palette className="h-[17px] w-[17px] opacity-70" />
+                              <span>Tema</span>
+                            </span>
+                            <ChevronRight className="h-[17px] w-[17px] opacity-50" />
+                          </button>
                           <AnimatePresence>
                             {logic.isThemeSubmenuOpen && (
                               <motion.div
-                                initial={{ opacity: 0, x: -10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -10 }}
-                                className={`absolute bottom-[-4px] left-[calc(100%+8px)] w-[140px] rounded-xl p-1.5 backdrop-blur-[25px] ${tc.menuBg} ${tc.menuBorder} ${tc.menuShadow}`}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute left-0 top-full z-40 w-[min(140px,calc(100vw-24px))] pt-1.5 sm:bottom-[-4px] sm:left-full sm:top-auto sm:w-[140px] sm:pt-0 sm:pl-4"
                               >
-                                {(
-                                  [
-                                    "system",
-                                    "light",
-                                    "dark",
-                                    "black",
-                                    "pastel",
-                                  ] as ThemePreference[]
-                                ).map((t) => (
-                                  <button
-                                    key={t}
-                                    type="button"
-                                    onClick={() => {
-                                      logic.setThemePreference(t);
-                                      logic.setIsMenuOpen(false);
-                                      logic.setIsThemeSubmenuOpen(false);
-                                    }}
-                                    className={`w-full text-left px-3 py-2 text-[0.8rem] rounded-lg transition-all ${tc.buttonHoverBg} ${logic.themePreference === t ? `${tc.text} font-medium` : tc.buttonText}`}
-                                  >
-                                    {t}
-                                  </button>
-                                ))}
+                                <div
+                                  role="menu"
+                                  className={`rounded-[18px] border p-1.5 ${menuShadowClass} ${menuSurfaceClass}`}
+                                >
+                                  {(
+                                    [
+                                      "system",
+                                      "light",
+                                      "dark",
+                                      "black",
+                                      "pastel",
+                                    ] as ThemePreference[]
+                                  ).map((t) => (
+                                    <button
+                                      key={t}
+                                      type="button"
+                                      onClick={() => {
+                                        logic.setThemePreference(t);
+                                        logic.setIsMenuOpen(false);
+                                        logic.setIsThemeSubmenuOpen(false);
+                                      }}
+                                      className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[0.8rem] ${logic.themePreference === t ? `${tc.text} font-medium` : tc.buttonText} ${menuItemHoverClass} focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-current [&>svg]:h-[17px] [&>svg]:w-[17px]`}
+                                    >
+                                      {themeIcons[t]}
+                                      {t}
+                                    </button>
+                                  ))}
+                                </div>
                               </motion.div>
                             )}
                           </AnimatePresence>
                         </div>
 
                         <div
-                          className={`my-1 border-t ${tc.settingsDivider}`}
-                        />
-                        <div
-                          className="relative group/data-submenu"
-                          onMouseEnter={() => logic.setIsDataSubmenuOpen(true)}
-                          onMouseLeave={() => logic.setIsDataSubmenuOpen(false)}
+                          className="relative"
+                          onMouseEnter={() => {
+                            if (!isTouchInput())
+                              logic.setIsDataSubmenuOpen(true);
+                          }}
+                          onMouseLeave={() => {
+                            if (!isTouchInput())
+                              logic.setIsDataSubmenuOpen(false);
+                          }}
                         >
-                          <div
-                            className={`flex items-center justify-between px-3 py-2.5 text-[0.85rem] rounded-lg cursor-pointer ${tc.buttonText} ${tc.buttonHoverBg} ${tc.buttonHoverText}`}
+                          <button
+                            type="button"
+                            aria-haspopup="menu"
+                            aria-expanded={logic.isDataSubmenuOpen}
+                            onFocus={() => {
+                              if (!isTouchInput())
+                                logic.setIsDataSubmenuOpen(true);
+                            }}
+                            onClick={() => {
+                              if (isTouchInput()) {
+                                logic.setIsDataSubmenuOpen(
+                                  !logic.isDataSubmenuOpen,
+                                );
+                              }
+                            }}
+                            className={`flex w-full items-center justify-between px-3 py-2.5 text-left text-[0.85rem] rounded-xl ${tc.buttonText} ${menuItemHoverClass} focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-current`}
                           >
-                            <span>Data</span>
-                            <span className="text-[0.7rem] opacity-50">›</span>
-                          </div>
+                            <span className="flex items-center gap-2.5">
+                              <Database className="h-[17px] w-[17px] opacity-70" />
+                              <span>Data</span>
+                            </span>
+                            <ChevronRight className="h-[17px] w-[17px] opacity-50" />
+                          </button>
                           <AnimatePresence>
                             {logic.isDataSubmenuOpen && (
                               <motion.div
-                                initial={{ opacity: 0, x: -10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -10 }}
-                                className={`absolute bottom-[-4px] left-[calc(100%+8px)] w-[140px] rounded-xl p-1.5 backdrop-blur-[25px] ${tc.menuBg} ${tc.menuBorder} ${tc.menuShadow}`}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute left-0 top-full z-40 w-[min(140px,calc(100vw-24px))] pt-1.5 sm:bottom-[-4px] sm:left-full sm:top-auto sm:w-[140px] sm:pt-0 sm:pl-4"
                               >
-                                <button
-                                  type="button"
-                                  onClick={logic.handleExportData}
-                                  className={`w-full text-left px-3 py-2 text-[0.8rem] rounded-lg transition-all ${tc.buttonHoverBg} ${tc.buttonText}`}
+                                <div
+                                  role="menu"
+                                  className={`rounded-[18px] border p-1.5 ${menuShadowClass} ${menuSurfaceClass}`}
                                 >
-                                  Exportar
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    logic.fileInputRef.current?.click()
-                                  }
-                                  className={`w-full text-left px-3 py-2 text-[0.8rem] rounded-lg transition-all ${tc.buttonHoverBg} ${tc.buttonText}`}
+                                  <button
+                                    type="button"
+                                    onClick={logic.handleExportData}
+                                    className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[0.8rem] ${tc.buttonText} ${menuItemHoverClass} focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-current [&>svg]:h-[17px] [&>svg]:w-[17px]`}
+                                  >
+                                    <Download className="opacity-70" />
+                                    Exportar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      logic.fileInputRef.current?.click()
+                                    }
+                                    className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[0.8rem] ${tc.buttonText} ${menuItemHoverClass} focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-current [&>svg]:h-[17px] [&>svg]:w-[17px]`}
+                                  >
+                                    <Upload className="opacity-70" />
+                                    Importar
+                                  </button>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+
+                        <div
+                          className={`my-2 border-t ${tc.settingsDivider}`}
+                        />
+                        <div
+                          className="relative"
+                          onMouseEnter={() => {
+                            if (!isTouchInput()) setIsCreditsSubmenuOpen(true);
+                          }}
+                          onMouseLeave={() => {
+                            if (!isTouchInput()) setIsCreditsSubmenuOpen(false);
+                          }}
+                        >
+                          <button
+                            type="button"
+                            aria-haspopup="menu"
+                            aria-expanded={isCreditsSubmenuOpen}
+                            onFocus={() => {
+                              if (!isTouchInput())
+                                setIsCreditsSubmenuOpen(true);
+                            }}
+                            onClick={() => {
+                              if (isTouchInput()) {
+                                setIsCreditsSubmenuOpen(!isCreditsSubmenuOpen);
+                              }
+                            }}
+                            className={`w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-left text-[0.8rem] ${tc.buttonText} ${menuItemHoverClass} focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-current`}
+                          >
+                            <span className="flex items-center gap-2.5">
+                              <Code2 className="h-[17px] w-[17px] opacity-70" />
+                              <span>
+                                <span className="block text-[0.68rem] opacity-55">
+                                  Desenvolvido por
+                                </span>
+                                <span className={`block ${tc.text}`}>
+                                  Gui23x
+                                </span>
+                              </span>
+                            </span>
+                            <ChevronRight className="h-[17px] w-[17px] opacity-50" />
+                          </button>
+                          <AnimatePresence>
+                            {isCreditsSubmenuOpen && (
+                              <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute left-0 top-full z-40 w-[min(174px,calc(100vw-24px))] pt-1.5 sm:left-full sm:top-auto sm:bottom-0 sm:w-[174px] sm:pt-0 sm:pl-4"
+                              >
+                                <div
+                                  role="menu"
+                                  className={`rounded-[18px] border p-1.5 ${menuShadowClass} ${menuSurfaceClass}`}
                                 >
-                                  Importar
-                                </button>
+                                  <a
+                                    role="menuitem"
+                                    href="https://github.com/gui23x"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[0.8rem] ${tc.buttonText} ${menuItemHoverClass} focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-current [&>svg]:h-[17px] [&>svg]:w-[17px]`}
+                                  >
+                                    <Github className="h-4 w-4" />
+                                    GitHub
+                                  </a>
+                                  <a
+                                    role="menuitem"
+                                    href="https://www.instagram.com/dsngui"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[0.8rem] ${tc.buttonText} ${menuItemHoverClass} focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-current [&>svg]:h-[17px] [&>svg]:w-[17px]`}
+                                  >
+                                    <Instagram className="h-4 w-4" />
+                                    Instagram
+                                  </a>
+                                  <a
+                                    role="menuitem"
+                                    href="https://www.linkedin.com/in/guilherme-gomes-da-silva/?locale=en"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[0.8rem] ${tc.buttonText} ${menuItemHoverClass} focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-current [&>svg]:h-[17px] [&>svg]:w-[17px]`}
+                                  >
+                                    <Linkedin className="h-4 w-4" />
+                                    LinkedIn
+                                  </a>
+                                </div>
                               </motion.div>
                             )}
                           </AnimatePresence>
@@ -291,11 +527,16 @@ export default function App() {
                   value={logic.searchQuery}
                   onChange={(e) => {
                     logic.setSearchQuery(e.target.value);
-                    if (logic.activeEngineId === "music") logic.setMusicInputError("");
+                    if (logic.activeEngineId === "music")
+                      logic.setMusicInputError("");
                   }}
                   autoComplete="off"
                   spellCheck="false"
-                  placeholder={logic.activeEngineId === "music" ? "Cole uma URL do YouTube para adicionar música..." : `Pesquisar no ${logic.currentActiveEngine.name}...`}
+                  placeholder={
+                    logic.activeEngineId === "music"
+                      ? "Cole uma URL do YouTube para adicionar música..."
+                      : `Pesquisar no ${logic.currentActiveEngine.name}...`
+                  }
                   className={`flex-1 bg-transparent border-none outline-none text-[0.95rem] ${tc.text} ${tc.inputPlaceholder} w-full`}
                 />
 
@@ -331,7 +572,12 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => {
-                        logic.setCardFormData({ title: "", url: "", icon: "", image: "" });
+                        logic.setCardFormData({
+                          title: "",
+                          url: "",
+                          icon: "",
+                          image: "",
+                        });
                         logic.setEditingCardId(null);
                         logic.setWorkspaceModalOpen(true);
                       }}
@@ -359,9 +605,9 @@ export default function App() {
             </div>
 
             <AnimatePresence>
-              {logic.showSettingsPanel &&
-              (logic.activeEngineId === "youtube" ||
-                logic.activeEngineId === "workspace") ||
+              {(logic.showSettingsPanel &&
+                (logic.activeEngineId === "youtube" ||
+                  logic.activeEngineId === "workspace")) ||
               (logic.activeEngineId === "youtube" && !logic.youtubeApiKey) ? (
                 <SettingsPanel
                   tc={tc}
@@ -402,25 +648,41 @@ export default function App() {
           <div className="w-full max-w-6xl mt-4">
             {!logic.youtubeApiKey ? (
               <div className="mb-4 rounded-2xl border border-red-500/40 bg-red-500/10 p-4 text-sm">
-                <p className="font-semibold text-red-300">YouTube não carregou</p>
+                <p className="font-semibold text-red-300">
+                  YouTube não carregou
+                </p>
                 <p className="mt-1 text-red-100/90">
-                  A propriedade <strong>youtubeApiKey</strong> está vazia ou não foi carregada corretamente.
+                  A propriedade <strong>youtubeApiKey</strong> está vazia ou não
+                  foi carregada corretamente.
                 </p>
                 <p className="mt-2 text-red-100/80">
-                  Abra a configuração do YouTube e cole a sua chave da API do Google Cloud.
+                  Abra a configuração do YouTube e cole a sua chave da API do
+                  Google Cloud.
                 </p>
               </div>
             ) : logic.youtubeStatus.type === "error" ? (
               <div className="mb-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
-                <p className="font-semibold text-amber-300">Diagnóstico do YouTube</p>
-                <p className="mt-1 text-amber-100/90">{logic.youtubeStatus.message}</p>
-                <p className="mt-2 text-amber-100/80">{logic.youtubeStatus.details}</p>
+                <p className="font-semibold text-amber-300">
+                  Diagnóstico do YouTube
+                </p>
+                <p className="mt-1 text-amber-100/90">
+                  {logic.youtubeStatus.message}
+                </p>
+                <p className="mt-2 text-amber-100/80">
+                  {logic.youtubeStatus.details}
+                </p>
               </div>
             ) : logic.youtubeStatus.type === "loading" ? (
               <div className="mb-4 rounded-2xl border border-blue-500/40 bg-blue-500/10 p-4 text-sm">
-                <p className="font-semibold text-blue-300">Carregando vídeos...</p>
-                <p className="mt-1 text-blue-100/90">{logic.youtubeStatus.message}</p>
-                <p className="mt-2 text-blue-100/80">{logic.youtubeStatus.details}</p>
+                <p className="font-semibold text-blue-300">
+                  Carregando vídeos...
+                </p>
+                <p className="mt-1 text-blue-100/90">
+                  {logic.youtubeStatus.message}
+                </p>
+                <p className="mt-2 text-blue-100/80">
+                  {logic.youtubeStatus.details}
+                </p>
               </div>
             ) : null}
           </div>

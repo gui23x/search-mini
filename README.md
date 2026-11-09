@@ -1,87 +1,81 @@
 <div align="center">
-  <!-- Placeholder for the project cover image -->
-<img alt="GHBanner" src="https://i.pinimg.com/originals/9f/85/14/9f85149150ad9e9be7642971bde762b6.png" />
+  <img alt="Search Mini" src="https://i.pinimg.com/originals/9f/85/14/9f85149150ad9e9be7642971bde762b6.png" />
 
-  <br>
+  <br />
 
-  # YouTube Search Hub (Search Mini)
-  
-  *A modern, minimal search engine hub with integrated YouTube video discovery, seamless playback, and multi-engine web search.*
+# Search Mini
+
+**Um espaço de busca minimalista para web, YouTube, música e seus favoritos.**
+
 </div>
 
-## 🌟 Overview
+## Sobre
 
-Search Mini is a highly customizable, centralized search dashboard built with React and Tailwind CSS. It allows you to search across multiple web engines (Google, DuckDuckGo, Brave, Bing) from a single, beautifully designed interface.
+O Search Mini reúne diferentes formas de pesquisar e organizar conteúdo em uma interface compacta. Escolha um mecanismo de busca, explore vídeos do YouTube, monte uma playlist ou guarde atalhos no Workspace — com preferências e dados salvos localmente no navegador.
 
-Beyond traditional search, it acts as a **YouTube client**—letting you discover videos, subscribe to channels locally, and watch content in a distraction-free modal. It also features a **Music mode** for building and playing a YouTube playlist, plus a **Workspace mode** for managing favorite bookmarks.
+## Recursos
 
-## ✨ Features
+- **Busca na Web:** Google, DuckDuckGo, Brave e Bing em um único seletor.
+- **YouTube:** pesquisa de vídeos e canais, reprodução em janela dedicada e inscrições locais para acompanhar novos vídeos.
+- **Música:** crie uma playlist a partir de URLs do YouTube. Reordene faixas, controle a reprodução, use repetição e modo aleatório, e organize a lista sem duplicatas.
+- **Workspace:** salve atalhos para seus sites. Digite `add: Nome do favorito` para criar um cartão; consultas comuns podem ser encaminhadas ao mecanismo de busca padrão.
+- **Temas:** Sistema, Claro, Escuro, Preto e Pastel, com transição suave ao trocar a aparência.
+- **Personalização:** modo monocromático para miniaturas e opções de configuração para YouTube e Workspace.
+- **Importação e exportação:** faça backup de configurações, cartões, inscrições, playlist e outros dados do aplicativo em JSON.
+- **Interface adaptável:** menus e submenus se ajustam a telas menores; em dispositivos touch, submenus podem ser abertos com um toque.
 
-*   **Multi-Engine Search**: Switch between Google, DuckDuckGo, Brave, and Bing instantly.
-*   **Integrated YouTube Experience**:
-    *   Search for videos and channels directly.
-    *   Watch videos seamlessly in a custom popup modal.
-    *   Locally subscribe to channels and view a chronological feed of their latest releases.
-    *   Automatically filters out YouTube Shorts for a cleaner video feed.
-*   **Workspace Bookmarks**:
-    *   Use the `add: [Site Name]` command in the Workspace engine to quickly create custom shortcut cards.
-    *   Fallback search: If a query isn't an "add:" command, it automatically redirects to your default web search.
-*   **Music Player**:
-    *   Build a playlist from YouTube video URLs that persists locally, is included in backups, and skips duplicate videos.
-    *   Add tracks from the main search field, then reorder the scrollable grid by dragging cards or using the move buttons.
-    *   Hide or show the playlist grid while keeping the player visible, and bulk-delete selected tracks with confirmation.
-*   **Deep Customization**:
-    *   Multiple color themes: System, Light, Dark, True Black, and Pastel.
-    *   **Monochrome Mode**: Toggle grayscale thumbnails for a minimalist aesthetic.
-*   **Data Portability**: Export and import all your settings, subscriptions, and Workspace cards as a single JSON file.
+## Como usar
 
-## 🚀 How It Works
+1. Use o seletor à esquerda da barra de pesquisa para escolher uma sessão ou mecanismo de busca.
+2. No computador, passe o cursor sobre **Web**, **Tema** ou **Data** para abrir as opções. Em dispositivos touch, toque para expandir.
+3. Na sessão **Música**, cole uma URL de vídeo do YouTube na barra de pesquisa para adicionar uma faixa à playlist.
+4. Na sessão **Workspace**, digite `add: Nome do favorito` para criar um cartão.
+5. Abra **Data** no menu para exportar ou importar um backup.
+6. Acesse os créditos no final do menu para encontrar o desenvolvedor nas redes sociais.
 
-1. **Search Bar**: Type your query and hit Enter. The action depends on the currently selected engine.
-2. **Engine Switcher**: Click the button on the left side of the search bar to reveal a dropdown menu and switch your active search engine.
-3. **Settings**: Click the gear icon `<Settings>` (available for YouTube and Workspace) to configure the YouTube API key, toggle Monochrome mode, or adjust Workspace fallback behavior. The Music player uses YouTube's embedded player and does not require a YouTube Data API key.
-4. **Workspace Commands**: While in the Workspace engine, type `add: My Bookmark` to instantly generate a bookmark card. You can click the gear icon on the card to edit its URL, icon, or image.
-5. **Data Management**: Open the Engine Switcher menu, hover over **Data**, and choose Export or Import to back up your configurations and Music playlist. Playlist changes are also saved in the browser on this device.
+### Configuração do YouTube
 
-## 💻 Run Locally
+A busca de vídeos e canais requer uma chave da **YouTube Data API v3**. Configure-a nas opções do aplicativo ou crie um arquivo `.env.local` na raiz:
 
-**Prerequisites:** 
-* Node.js (v16+ recommended)
-* A YouTube Data API v3 Key (for YouTube features)
+```env
+VITE_YOUTUBE_API_KEY=sua_chave_da_api
+```
 
-### Installation
+O modo Música usa o player incorporado do YouTube e não exige essa chave para adicionar URLs à playlist.
 
-1. **Clone the repository and install dependencies:**
-   ```bash
-   npm install
-   ```
+## Executar localmente
 
-2. **Environment Configuration:**
-   Create a `.env` or `.env.local` file in the root directory and add your API keys:
-   ```env
-   VITE_YOUTUBE_API_KEY=your_youtube_api_key_here
-   ```
-   *Note: You can also add your YouTube API Key directly via the Settings panel inside the app's UI.*
+**Requisitos:** Node.js 16 ou superior e npm.
 
-3. **Run the development server:**
-   ```bash
-   npm run dev
-   ```
+```bash
+npm install
+npm run dev
+```
 
-4. **Build for production:**
-   ```bash
-   npm run build
-   ```
+O servidor de desenvolvimento é iniciado na porta `3000`.
 
+Comandos adicionais:
 
-## 🛠️ Tech Stack
+```bash
+npm run lint   # Verificação de tipos TypeScript
+npm run build  # Build de produção
+npm run preview
+```
 
-*   **Framework**: React (with Vite)
-*   **Styling**: Tailwind CSS
-*   **Icons**: Lucide React
-*   **Animations**: Framer Motion
-*   **Data Fetching**: Native Fetch API (YouTube Data API v3)
-*   **Storage**: Browser LocalStorage for persistence
+## Tecnologias
 
----
-*Built by the Search Mini Team.*
+- React e TypeScript
+- Vite
+- Tailwind CSS
+- Lucide React
+- Motion
+- YouTube Data API v3
+- LocalStorage para persistência local
+
+## Desenvolvedor
+
+**Gui23x**
+
+- [GitHub](https://github.com/gui23x)
+- [Instagram](https://www.instagram.com/dsngui)
+- [LinkedIn](https://www.linkedin.com/in/guilherme-gomes-da-silva/?locale=en)
