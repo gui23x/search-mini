@@ -8,6 +8,7 @@ import { webEngines, otherEngines } from "./constants/engines";
 // Sub-componentes modulares desacoplados
 import { SettingsPanel } from "./components/SettingsPanel";
 import { YouTubeSection } from "./components/YouTubeSection";
+import { MusicSection } from "./components/MusicSection";
 import { WorkspaceSection } from "./components/WorkspaceSection";
 import { ModalsContainer } from "./components/ModalsContainer";
 import VideoModal from "./components/VideoModal";
@@ -93,7 +94,7 @@ export default function App() {
       <main className="flex flex-col items-center p-4 relative min-h-screen">
         <motion.div
           layout
-          className={`w-full flex justify-center z-50 ${logic.activeEngineId === "youtube" || logic.activeEngineId === "workspace" ? "mt-12 sm:mt-20 mb-8" : "mt-[45vh] -translate-y-1/2 mb-0"}`}
+          className={`w-full flex justify-center z-50 ${logic.activeEngineId === "youtube" || logic.activeEngineId === "workspace" || logic.activeEngineId === "music" ? "mt-12 sm:mt-20 mb-8" : "mt-[45vh] -translate-y-1/2 mb-0"}`}
         >
           <motion.div
             layout
@@ -288,14 +289,27 @@ export default function App() {
                   ref={logic.searchInputRef}
                   type="text"
                   value={logic.searchQuery}
-                  onChange={(e) => logic.setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    logic.setSearchQuery(e.target.value);
+                    if (logic.activeEngineId === "music") logic.setMusicInputError("");
+                  }}
                   autoComplete="off"
                   spellCheck="false"
-                  placeholder={`Pesquisar no ${logic.currentActiveEngine.name}...`}
+                  placeholder={logic.activeEngineId === "music" ? "Cole uma URL do YouTube para adicionar música..." : `Pesquisar no ${logic.currentActiveEngine.name}...`}
                   className={`flex-1 bg-transparent border-none outline-none text-[0.95rem] ${tc.text} ${tc.inputPlaceholder} w-full`}
                 />
 
                 <div className="flex items-center ml-1 gap-1">
+                  {logic.activeEngineId === "music" && (
+                    <button
+                      type="submit"
+                      aria-label="Adicionar música à playlist"
+                      title="Adicionar música à playlist"
+                      className={`flex items-center justify-center rounded-lg p-1.5 transition-colors ${tc.buttonText} ${tc.buttonHoverBg} ${tc.buttonHoverText}`}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  )}
                   {logic.activeEngineId === "youtube" &&
                     logic.youtubeApiKey && (
                       <button
@@ -345,9 +359,10 @@ export default function App() {
             </div>
 
             <AnimatePresence>
-              {(logic.showSettingsPanel ||
-                (logic.activeEngineId === "youtube" &&
-                  !logic.youtubeApiKey)) && (
+              {logic.showSettingsPanel &&
+              (logic.activeEngineId === "youtube" ||
+                logic.activeEngineId === "workspace") ||
+              (logic.activeEngineId === "youtube" && !logic.youtubeApiKey) ? (
                 <SettingsPanel
                   tc={tc}
                   activeEngineId={logic.activeEngineId}
@@ -360,7 +375,7 @@ export default function App() {
                   setWorkspaceSearchFallback={logic.setWorkspaceSearchFallback}
                   setShowSettingsPanel={logic.setShowSettingsPanel}
                 />
-              )}
+              ) : null}
             </AnimatePresence>
           </motion.div>
         </motion.div>
@@ -442,6 +457,15 @@ export default function App() {
             setEditingCardId={logic.setEditingCardId}
             setWorkspaceModalOpen={logic.setWorkspaceModalOpen}
             workspaceCards={logic.workspaceCards}
+          />
+        )}
+
+        {!logic.isAiMode && logic.activeEngineId === "music" && (
+          <MusicSection
+            tc={tc}
+            tracks={logic.musicTracks}
+            setTracks={logic.setMusicTracks}
+            musicInputError={logic.musicInputError}
           />
         )}
       </main>

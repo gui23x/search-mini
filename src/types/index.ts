@@ -35,3 +35,10 @@ export interface WorkspaceCard {
     icon: string;
     image: string;
 }
+
+export interface MusicTrack {
+    id: string;
+    videoId: string;
+    title: string;
+    url: string;
+}

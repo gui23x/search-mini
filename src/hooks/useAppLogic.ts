@@ -1,7 +1,7 @@
 import { ChangeEvent, FormEvent, MouseEvent as ReactMouseEvent, useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { webEngines, allEngines } from '../constants/engines';
 import { fetchYouTubeChannels, fetchYouTubeVideos, fetchYouTubeVideosByChannel, fetchYouTubeFeed } from '../services/youtube';
-import { VideoResult, ChannelResult, Subscription, WorkspaceCard, SearchEngine } from '../types';
+import { VideoResult, ChannelResult, Subscription, WorkspaceCard, SearchEngine, MusicTrack } from '../types';
 import { ThemePreference } from '../constants/themeClasses';
 
 export type ChatSession = {
@@ -9,6 +9,51 @@ export type ChatSession = {
   title: string;
   updatedAt: number;
   messages: Array<{ role: 'user' | 'model'; content: string; attachments?: string[] }>;
+};
+
+const getYouTubeVideoId = (url: string): string | null => {
+  try {
+    const parsedUrl = new URL(url);
+    const hostname = parsedUrl.hostname.toLowerCase().replace(/^www\./, '');
+    if (hostname === 'youtu.be') {
+      const id = parsedUrl.pathname.split('/').filter(Boolean)[0];
+      return id && /^[\w-]{11}$/.test(id) ? id : null;
+    }
+    if (hostname !== 'youtube.com' && !hostname.endsWith('.youtube.com')) return null;
+    const id = parsedUrl.searchParams.get('v') ?? parsedUrl.pathname.match(/^\/(?:embed|shorts|live)\/([\w-]{11})/)?.[1];
+    return id && /^[\w-]{11}$/.test(id) ? id : null;
+  } catch {
+    return null;
+  }
+};
+
+const normalizeMusicTracks = (tracks: unknown): MusicTrack[] => {
+  if (!Array.isArray(tracks)) return [];
+  const seenVideoIds = new Set<string>();
+  return tracks.filter((track): track is MusicTrack => {
+    if (
+      typeof track?.id !== 'string' ||
+      typeof track?.videoId !== 'string' ||
+      !/^[\w-]{11}$/.test(track.videoId) ||
+      typeof track?.title !== 'string' ||
+      typeof track?.url !== 'string' ||
+      seenVideoIds.has(track.videoId)
+    ) {
+      return false;
+    }
+    seenVideoIds.add(track.videoId);
+    return true;
+  });
+};
+
+const readMusicTracks = (): MusicTrack[] => {
+  try {
+    const savedTracks = localStorage.getItem('musicPlaylist');
+    return normalizeMusicTracks(savedTracks ? JSON.parse(savedTracks) : []);
+  } catch (error) {
+    console.error('Não foi possível carregar a playlist salva.', error);
+    return [];
+  }
 };
 
 /**
@@ -28,6 +73,9 @@ export const useAppLogic = () => {
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
   const [isMonochromeMode, setIsMonochromeMode] = useState(() => localStorage.getItem('isMonochromeMode') === 'true');
   const [workspaceSearchFallback, setWorkspaceSearchFallback] = useState(() => localStorage.getItem('workspaceSearchFallback') === 'true');
+  const [musicTracks, setMusicTracks] = useState<MusicTrack[]>(readMusicTracks);
+  const [musicInputError, setMusicInputError] = useState('');
+  const musicInputErrorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [themePreference, setThemePreference] = useState<ThemePreference>(() => (localStorage.getItem('themePreference') as ThemePreference) || 'system');
   const [lastSearchEngineId, setLastSearchEngineId] = useState(() => localStorage.getItem('lastSearchEngineId') || 'google');
   const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>(() => window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
@@ -115,6 +163,14 @@ export const useAppLogic = () => {
   useEffect(() => { localStorage.setItem('youtubeApiKey', youtubeApiKey); }, [youtubeApiKey]);
   useEffect(() => { localStorage.setItem('isMonochromeMode', String(isMonochromeMode)); }, [isMonochromeMode]);
   useEffect(() => { localStorage.setItem('workspaceSearchFallback', String(workspaceSearchFallback)); }, [workspaceSearchFallback]);
+  useEffect(() => {
+    try {
+      localStorage.setItem('musicPlaylist', JSON.stringify(musicTracks));
+    } catch (error) {
+      console.error('Não foi possível salvar a playlist.', error);
+      setMusicInputError('Não foi possível salvar a playlist neste dispositivo.');
+    }
+  }, [musicTracks]);
   useEffect(() => { localStorage.setItem('userSubscriptions', JSON.stringify(userSubscriptions)); }, [userSubscriptions]);
   useEffect(() => { localStorage.setItem('themePreference', themePreference); }, [themePreference]);
   useEffect(() => { localStorage.setItem('workspaceCards', JSON.stringify(workspaceCards)); }, [workspaceCards]);
@@ -127,6 +183,10 @@ export const useAppLogic = () => {
     const handleChange = (event: MediaQueryListEvent) => setSystemTheme(event.matches ? 'light' : 'dark');
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
+  useEffect(() => () => {
+    if (musicInputErrorTimeoutRef.current) clearTimeout(musicInputErrorTimeoutRef.current);
   }, []);
 
   useEffect(() => {
@@ -349,6 +409,14 @@ export const useAppLogic = () => {
     }
   };
 
+  const clearMusicInputError = useCallback(() => {
+    if (musicInputErrorTimeoutRef.current) {
+      clearTimeout(musicInputErrorTimeoutRef.current);
+      musicInputErrorTimeoutRef.current = null;
+    }
+    setMusicInputError('');
+  }, []);
+
   const executeSearch = useCallback(async (event: React.FormEvent) => {
     event.preventDefault();
     if (isAiMode) {
@@ -358,6 +426,34 @@ export const useAppLogic = () => {
     }
     if (!searchQuery.trim()) {
       if (activeEngineId === 'youtube' && userSubscriptions.length > 0) loadUserSubscriptionFeed();
+      return;
+    }
+    if (activeEngineId === 'music') {
+      const url = searchQuery.trim();
+      const videoId = getYouTubeVideoId(url);
+      if (!videoId) {
+        clearMusicInputError();
+        setMusicInputError('Cole uma URL válida de vídeo ou música do YouTube.');
+        return;
+      }
+      if (musicTracks.some(track => track.videoId === videoId)) {
+        setSearchQuery('');
+        clearMusicInputError();
+        setMusicInputError('Essa música já está na playlist.');
+        musicInputErrorTimeoutRef.current = setTimeout(() => {
+          setMusicInputError('');
+          musicInputErrorTimeoutRef.current = null;
+        }, 3000);
+        return;
+      }
+      setMusicTracks(previousTracks => [...previousTracks, {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        videoId,
+        title: `Vídeo do YouTube ${musicTracks.length + 1}`,
+        url,
+      }]);
+      setSearchQuery('');
+      clearMusicInputError();
       return;
     }
     if (activeEngineId === 'workspace') {
@@ -408,7 +504,7 @@ export const useAppLogic = () => {
     } else {
       window.location.href = currentActiveEngine.url + encodeURIComponent(searchQuery);
     }
-  }, [searchQuery, activeEngineId, youtubeApiKey, userSubscriptions, loadUserSubscriptionFeed, currentActiveEngine, workspaceSearchFallback, lastSearchEngineId, isAiMode, attachments, chatMessages, geminiApiKey, geminiModel]);
+  }, [searchQuery, activeEngineId, youtubeApiKey, userSubscriptions, loadUserSubscriptionFeed, currentActiveEngine, workspaceSearchFallback, lastSearchEngineId, isAiMode, attachments, chatMessages, geminiApiKey, geminiModel, musicTracks, clearMusicInputError]);
 
   const handleChannelSelection = useCallback(async (channelId: string) => {
     setIsContentLoading(true);
@@ -454,7 +550,7 @@ export const useAppLogic = () => {
 
   const handleExportData = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
-    const data = { preferredEngine: activeEngineId, youtubeApiKey, isMonochromeMode, workspaceSearchFallback, themePreference, workspaceCards, userSubscriptions, lastSearchEngineId, geminiApiKey, geminiModel, chatSessions };
+    const data = { preferredEngine: activeEngineId, youtubeApiKey, isMonochromeMode, workspaceSearchFallback, themePreference, workspaceCards, userSubscriptions, musicTracks, lastSearchEngineId, geminiApiKey, geminiModel, chatSessions };
     setExportDataJson(JSON.stringify(data, null, 2));
     setExportDataModalOpen(true);
     setIsMenuOpen(false); setIsDataSubmenuOpen(false);
@@ -470,6 +566,8 @@ export const useAppLogic = () => {
         if (data.youtubeApiKey !== undefined) setYoutubeApiKey(data.youtubeApiKey);
         if (data.isMonochromeMode !== undefined) setIsMonochromeMode(data.isMonochromeMode);
         if (data.workspaceSearchFallback !== undefined) setWorkspaceSearchFallback(data.workspaceSearchFallback);
+        const importedTracks = data.musicTracks ?? data.musicPlaylist;
+        if (importedTracks !== undefined) setMusicTracks(normalizeMusicTracks(importedTracks));
         if (data.themePreference) setThemePreference(data.themePreference);
         if (data.workspaceCards) setWorkspaceCards(data.workspaceCards);
         if (data.userSubscriptions) setUserSubscriptions(data.userSubscriptions);
@@ -490,7 +588,7 @@ export const useAppLogic = () => {
     activeEngineId, setActiveEngineId, searchQuery, setSearchQuery, isMenuOpen, setIsMenuOpen,
     isSubmenuOpen, setIsSubmenuOpen, isThemeSubmenuOpen, setIsThemeSubmenuOpen, isDataSubmenuOpen, setIsDataSubmenuOpen,
     youtubeApiKey, setYoutubeApiKey, showSettingsPanel, setShowSettingsPanel, isMonochromeMode, setIsMonochromeMode,
-    workspaceSearchFallback, setWorkspaceSearchFallback, themePreference, setThemePreference,
+    workspaceSearchFallback, setWorkspaceSearchFallback, musicTracks, setMusicTracks, musicInputError, setMusicInputError, themePreference, setThemePreference,
     isAiMode, setIsAiMode, geminiApiKey, setGeminiApiKey, geminiModel, setGeminiModel,
     chatSessions, setChatSessions, currentSessionId, setCurrentSessionId, showHistoryModal, setShowHistoryModal,
     chatMessages, attachments, setAttachments, isAiLoading, showScrollButton, videoResultsList, channelResultsList,
