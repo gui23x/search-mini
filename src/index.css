@@ -1,10 +1,12 @@
+@import url("https://api.fontshare.com/v2/css?f[]=switzer@1&display=swap");
 @import "tailwindcss";
-@import url("https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900&display=swap");
 
-@layer base {
-  :root {
-    font-family: "Raleway", sans-serif;
-  }
+:root {
+  --app-font-family: "Switzer", sans-serif;
+}
+
+* {
+  font-family: var(--app-font-family);
 }
 
 .no-scrollbar::-webkit-scrollbar {

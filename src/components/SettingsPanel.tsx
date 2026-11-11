@@ -4,9 +4,6 @@ import { motion } from "motion/react";
 interface SettingsPanelProps {
   tc: any;
   activeEngineId: string;
-  youtubeApiKey: string;
-  setYoutubeApiKey: (val: string) => void;
-  isAiMode: false;
   isMonochromeMode: boolean;
   setIsMonochromeMode: (val: boolean) => void;
   workspaceSearchFallback: boolean;
@@ -20,8 +17,6 @@ interface SettingsPanelProps {
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   tc,
   activeEngineId,
-  youtubeApiKey,
-  setYoutubeApiKey,
   isMonochromeMode,
   setIsMonochromeMode,
   workspaceSearchFallback,
@@ -38,26 +33,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
       <div
         className={`rounded-xl p-4 backdrop-blur-md space-y-4 ${tc.settingsPanelBg} ${tc.settingsPanelBorder}`}
       >
-        {activeEngineId === "youtube" && (
-          <div>
-            <label
-              className={`block text-[10px] font-semibold mb-2.5 uppercase ${tc.settingsLabelText}`}
-            >
-              YouTube API Key
-            </label>
-            <input
-              type="password"
-              value={youtubeApiKey}
-              onChange={(e) => setYoutubeApiKey(e.target.value)}
-              placeholder="Chave v3..."
-              className={`w-full rounded-lg px-3 py-2 text-xs outline-none transition-colors ${tc.settingsInputBg} ${tc.settingsInputBorder} ${tc.settingsInputFocusBorder} ${tc.text}`}
-            />
-          </div>
-        )}
-
-        <div
-          className={`flex items-center justify-between ${activeEngineId === "youtube" ? `pt-2 border-t ${tc.settingsDivider}` : ""}`}
-        >
+        <div className="flex items-center justify-between">
           <label
             className={`text-[10px] font-semibold ${tc.settingsLabelText}`}
           >

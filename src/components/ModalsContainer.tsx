@@ -14,9 +14,6 @@ interface ModalsContainerProps {
   exportDataModalOpen: boolean;
   setExportDataModalOpen: (val: boolean) => void;
   exportDataJson: string;
-  youtubeTutorialModalOpen: boolean;
-  setYoutubeTutorialModalOpen: (val: boolean) => void;
-  YoutubeTutorialContent: React.ComponentType;
 }
 
 /**
@@ -34,9 +31,6 @@ export const ModalsContainer: React.FC<ModalsContainerProps> = ({
   exportDataModalOpen,
   setExportDataModalOpen,
   exportDataJson,
-  youtubeTutorialModalOpen,
-  setYoutubeTutorialModalOpen,
-  YoutubeTutorialContent,
 }) => {
   return (
     <>
@@ -249,36 +243,6 @@ export const ModalsContainer: React.FC<ModalsContainerProps> = ({
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {youtubeTutorialModalOpen && (
-          <div className="fixed inset-0 z- flex items-center justify-center p-4">
-            <div
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-              onClick={() => setYoutubeTutorialModalOpen(false)}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className={`relative w-full max-w-2xl rounded-2xl p-6 shadow-2xl ${tc.menuBg} ${tc.menuBorder}`}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h2 className={`text-lg font-bold mb-4 ${tc.text}`}>
-                Tutorial: Chave de API do YouTube
-              </h2>
-              <YoutubeTutorialContent />
-              <div className="flex justify-end mt-6">
-                <button
-                  onClick={() => setYoutubeTutorialModalOpen(false)}
-                  className={`px-4 py-2 rounded-lg text-xs font-medium ${tc.buttonText} ${tc.buttonHoverBg} transition-colors`}
-                >
-                  Fechar
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </>
   );
 };

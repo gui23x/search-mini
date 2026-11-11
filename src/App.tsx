@@ -14,11 +14,8 @@ import {
   Moon,
   Palette,
   Settings,
-  Info,
   Sun,
   Upload,
-  Youtube,
-  Play,
   Plus,
 } from "lucide-react";
 import { useAppLogic } from "./hooks/useAppLogic";
@@ -27,11 +24,9 @@ import { webEngines, otherEngines } from "./constants/engines";
 
 // Sub-componentes modulares desacoplados
 import { SettingsPanel } from "./components/SettingsPanel";
-import { YouTubeSection } from "./components/YouTubeSection";
 import { MusicSection } from "./components/MusicSection";
 import { WorkspaceSection } from "./components/WorkspaceSection";
 import { ModalsContainer } from "./components/ModalsContainer";
-import VideoModal from "./components/VideoModal";
 
 export default function App() {
   const logic = useAppLogic();
@@ -79,65 +74,6 @@ export default function App() {
   const isTouchInput = () =>
     typeof window !== "undefined" && window.matchMedia("(hover: none)").matches;
 
-  const YoutubeTutorialContent = () => (
-    <div
-      className={`space-y-4 text-[0.85rem] sm:text-[0.9rem] leading-relaxed ${tc.text} opacity-90`}
-    >
-      <p>
-        Para buscar e assistir vídeos diretamente no{" "}
-        <strong>Search Mini</strong>, você precisa de uma chave de API gratuita
-        do <strong>YouTube Data API v3</strong>.
-      </p>
-      <ol className="list-decimal list-inside space-y-2 ml-2">
-        <li>
-          Acesse o{" "}
-          <a
-            href="https://console.cloud.google.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-500 hover:underline"
-          >
-            Google Cloud Console
-          </a>
-          .
-        </li>
-        <li>
-          Crie um <strong>Novo Projeto</strong> ou selecione um existente.
-        </li>
-        <li>
-          Acesse <strong>APIs & Serviços</strong> &gt;{" "}
-          <strong>Biblioteca</strong>.
-        </li>
-        <li>
-          Busque por <strong>YouTube Data API v3</strong> e clique em{" "}
-          <strong>Ativar</strong>.
-        </li>
-        <li>
-          Abra as <strong>Credenciais</strong>, clique em{" "}
-          <strong>Criar Credenciais</strong> e escolha{" "}
-          <strong>Chave de API</strong>.
-        </li>
-        <li>
-          Copie a chave gerada e cole nas configurações (ícone de engrenagem).
-        </li>
-      </ol>
-      <div className="mt-6 p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-3">
-        <Youtube className="w-6 h-6 text-blue-500 flex-shrink-0 mt-0.5" />
-        <div>
-          <h4 className="font-semibold mb-1">Prefere um guia em vídeo?</h4>
-          <a
-            href="https://www.youtube.com/watch?v=tGJPSytMU5g"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs font-medium text-blue-500 hover:text-blue-600"
-          >
-            Assistir tutorial no YouTube <Play className="w-3 h-3" />
-          </a>
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <div
       className={`min-h-screen overflow-x-hidden transition-colors duration-500 ${tc.bg} ${tc.text} ${tc.selection}`}
@@ -153,7 +89,7 @@ export default function App() {
       <main className="flex flex-col items-center p-4 relative min-h-screen">
         <motion.div
           layout
-          className={`w-full flex justify-center z-50 ${logic.activeEngineId === "youtube" || logic.activeEngineId === "workspace" || logic.activeEngineId === "music" ? "mt-12 sm:mt-20 mb-8" : "mt-[45vh] -translate-y-1/2 mb-0"}`}
+          className={`w-full flex justify-center z-50 ${logic.activeEngineId === "workspace" || logic.activeEngineId === "music" ? "mt-12 sm:mt-20 mb-8" : "mt-[45vh] -translate-y-1/2 mb-0"}`}
         >
           <motion.div
             layout
@@ -551,43 +487,29 @@ export default function App() {
                       <Plus className="h-4 w-4" />
                     </button>
                   )}
-                  {logic.activeEngineId === "youtube" &&
-                    logic.youtubeApiKey && (
-                      <button
-                        type="button"
-                        onClick={() => logic.setYoutubeTutorialModalOpen(true)}
-                        className={`flex items-center justify-center p-1.5 rounded-lg transition-colors ${tc.buttonText} ${tc.buttonHoverBg} opacity-60 hover:opacity-100`}
-                        title="Ver API Tutorial"
-                      >
-                        <Info className="w-4 h-4" />
-                      </button>
-                    )}
                 </div>
               </form>
 
-              {(logic.activeEngineId === "youtube" ||
-                logic.activeEngineId === "workspace") && (
+              {logic.activeEngineId === "workspace" && (
                 <div className="flex items-center gap-1.5 flex-shrink-0">
-                  {logic.activeEngineId === "workspace" && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        logic.setCardFormData({
-                          title: "",
-                          url: "",
-                          icon: "",
-                          image: "",
-                        });
-                        logic.setEditingCardId(null);
-                        logic.setWorkspaceModalOpen(true);
-                      }}
-                      className={`flex items-center justify-center w-[42px] h-[42px] rounded-[14px] backdrop-blur-xl transition-all border hover:-translate-y-0.5 ${tc.searchBoxBg} ${tc.searchBoxBorder} ${tc.buttonText} ${tc.buttonHoverBg}`}
-                      title="Adicionar card"
-                      aria-label="Adicionar card ao workspace"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      logic.setCardFormData({
+                        title: "",
+                        url: "",
+                        icon: "",
+                        image: "",
+                      });
+                      logic.setEditingCardId(null);
+                      logic.setWorkspaceModalOpen(true);
+                    }}
+                    className={`flex items-center justify-center w-[42px] h-[42px] rounded-[14px] backdrop-blur-xl transition-all border hover:-translate-y-0.5 ${tc.searchBoxBg} ${tc.searchBoxBorder} ${tc.buttonText} ${tc.buttonHoverBg}`}
+                    title="Adicionar card"
+                    aria-label="Adicionar card ao workspace"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
 
                   <button
                     type="button"
@@ -605,16 +527,11 @@ export default function App() {
             </div>
 
             <AnimatePresence>
-              {(logic.showSettingsPanel &&
-                (logic.activeEngineId === "youtube" ||
-                  logic.activeEngineId === "workspace")) ||
-              (logic.activeEngineId === "youtube" && !logic.youtubeApiKey) ? (
+              {logic.showSettingsPanel &&
+              logic.activeEngineId === "workspace" ? (
                 <SettingsPanel
                   tc={tc}
                   activeEngineId={logic.activeEngineId}
-                  youtubeApiKey={logic.youtubeApiKey}
-                  setYoutubeApiKey={logic.setYoutubeApiKey}
-                  isAiMode={false}
                   isMonochromeMode={logic.isMonochromeMode}
                   setIsMonochromeMode={logic.setIsMonochromeMode}
                   workspaceSearchFallback={logic.workspaceSearchFallback}
@@ -625,90 +542,6 @@ export default function App() {
             </AnimatePresence>
           </motion.div>
         </motion.div>
-
-        {!logic.isAiMode &&
-          logic.activeEngineId === "youtube" &&
-          !logic.youtubeApiKey && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`w-full max-w-2xl mt-6 p-6 sm:p-8 rounded-3xl border ${tc.settingsPanelBg} ${tc.settingsPanelBorder} shadow-xl`}
-            >
-              <h2
-                className={`text-xl font-bold mb-6 ${tc.text} flex items-center gap-3`}
-              >
-                <Info className="w-6 h-6 text-blue-500" /> Configuração do
-                YouTube
-              </h2>
-              <YoutubeTutorialContent />
-            </motion.div>
-          )}
-
-        {!logic.isAiMode && logic.activeEngineId === "youtube" && (
-          <div className="w-full max-w-6xl mt-4">
-            {!logic.youtubeApiKey ? (
-              <div className="mb-4 rounded-2xl border border-red-500/40 bg-red-500/10 p-4 text-sm">
-                <p className="font-semibold text-red-300">
-                  YouTube não carregou
-                </p>
-                <p className="mt-1 text-red-100/90">
-                  A propriedade <strong>youtubeApiKey</strong> está vazia ou não
-                  foi carregada corretamente.
-                </p>
-                <p className="mt-2 text-red-100/80">
-                  Abra a configuração do YouTube e cole a sua chave da API do
-                  Google Cloud.
-                </p>
-              </div>
-            ) : logic.youtubeStatus.type === "error" ? (
-              <div className="mb-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
-                <p className="font-semibold text-amber-300">
-                  Diagnóstico do YouTube
-                </p>
-                <p className="mt-1 text-amber-100/90">
-                  {logic.youtubeStatus.message}
-                </p>
-                <p className="mt-2 text-amber-100/80">
-                  {logic.youtubeStatus.details}
-                </p>
-              </div>
-            ) : logic.youtubeStatus.type === "loading" ? (
-              <div className="mb-4 rounded-2xl border border-blue-500/40 bg-blue-500/10 p-4 text-sm">
-                <p className="font-semibold text-blue-300">
-                  Carregando vídeos...
-                </p>
-                <p className="mt-1 text-blue-100/90">
-                  {logic.youtubeStatus.message}
-                </p>
-                <p className="mt-2 text-blue-100/80">
-                  {logic.youtubeStatus.details}
-                </p>
-              </div>
-            ) : null}
-          </div>
-        )}
-
-        {!logic.isAiMode &&
-          logic.activeEngineId === "youtube" &&
-          logic.youtubeApiKey &&
-          (logic.hasPerformedSearch || logic.isViewingFeed) && (
-            <YouTubeSection
-              tc={tc}
-              isMonochromeMode={logic.isMonochromeMode}
-              currentAppliedTheme={logic.currentAppliedTheme}
-              channelResultsList={logic.channelResultsList}
-              videoResultsList={logic.videoResultsList}
-              userSubscriptions={logic.userSubscriptions}
-              isViewingFeed={logic.isViewingFeed}
-              selectedChannelId={logic.selectedChannelId}
-              isContentLoading={logic.isContentLoading}
-              nextPageToken={logic.nextPageToken}
-              handleChannelSelection={logic.handleChannelSelection}
-              toggleChannelSubscription={logic.toggleChannelSubscription}
-              setSelectedVideoId={logic.setSelectedVideoId}
-              loadMoreVideos={logic.loadMoreVideos}
-            />
-          )}
 
         {!logic.isAiMode && logic.activeEngineId === "workspace" && (
           <WorkspaceSection
@@ -732,11 +565,6 @@ export default function App() {
         )}
       </main>
 
-      <VideoModal
-        selectedVideoId={logic.selectedVideoId}
-        onClose={() => logic.setSelectedVideoId(null)}
-      />
-
       <ModalsContainer
         tc={tc}
         workspaceModalOpen={logic.workspaceModalOpen}
@@ -749,13 +577,10 @@ export default function App() {
         exportDataModalOpen={logic.exportDataModalOpen}
         setExportDataModalOpen={logic.setExportDataModalOpen}
         exportDataJson={logic.exportDataJson}
-        youtubeTutorialModalOpen={logic.youtubeTutorialModalOpen}
-        setYoutubeTutorialModalOpen={logic.setYoutubeTutorialModalOpen}
-        YoutubeTutorialContent={YoutubeTutorialContent}
       />
 
       <style>{`
-        :root { font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif; }
+        :root { font-family: var(--app-font-family); }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>

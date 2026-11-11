@@ -1,7 +1,6 @@
-import { ChangeEvent, FormEvent, MouseEvent as ReactMouseEvent, useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { webEngines, allEngines } from '../constants/engines';
-import { fetchYouTubeChannels, fetchYouTubeVideos, fetchYouTubeVideosByChannel, fetchYouTubeFeed } from '../services/youtube';
-import { VideoResult, ChannelResult, Subscription, WorkspaceCard, SearchEngine, MusicTrack } from '../types';
+import { WorkspaceCard, SearchEngine, MusicTrack } from '../types';
 import { ThemePreference } from '../constants/themeClasses';
 
 export type ChatSession = {
@@ -60,16 +59,15 @@ const readMusicTracks = (): MusicTrack[] => {
  * Custom hook para gerenciar toda a lógica de estado do App
  */
 export const useAppLogic = () => {
-  const [activeEngineId, setActiveEngineId] = useState(() => localStorage.getItem('preferredEngine') || 'google');
+  const [activeEngineId, setActiveEngineId] = useState(() => {
+    const savedEngine = localStorage.getItem('preferredEngine');
+    return savedEngine === 'youtube' ? 'google' : savedEngine || 'google';
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSubmenuOpen, setIsSubmenuOpen] = useState(false);
   const [isThemeSubmenuOpen, setIsThemeSubmenuOpen] = useState(false);
   const [isDataSubmenuOpen, setIsDataSubmenuOpen] = useState(false);
-  const [youtubeApiKey, setYoutubeApiKey] = useState(() => {
-    const envKey = (import.meta as ImportMeta & { env: Record<string, string> }).env?.VITE_YOUTUBE_API_KEY;
-    return envKey || localStorage.getItem('youtubeApiKey') || '';
-  });
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
   const [isMonochromeMode, setIsMonochromeMode] = useState(() => localStorage.getItem('isMonochromeMode') === 'true');
   const [workspaceSearchFallback, setWorkspaceSearchFallback] = useState(() => localStorage.getItem('workspaceSearchFallback') === 'true');
@@ -109,24 +107,6 @@ export const useAppLogic = () => {
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
 
-  const [videoResultsList, setVideoResultsList] = useState<VideoResult[]>([]);
-  const [channelResultsList, setChannelResultsList] = useState<ChannelResult[]>([]);
-  const [nextPageToken, setNextPageToken] = useState<string | null>(null);
-  const [isContentLoading, setIsContentLoading] = useState(false);
-  const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
-  const [hasPerformedSearch, setHasPerformedSearch] = useState(false);
-  const [youtubeStatus, setYoutubeStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error'; message: string; details: string }>({
-    type: 'idle',
-    message: 'Aguardando ação do usuário.',
-    details: 'Nenhuma busca foi executada ainda.'
-  });
-  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
-  const [userSubscriptions, setUserSubscriptions] = useState<Subscription[]>(() => {
-    const savedSubscriptions = localStorage.getItem('userSubscriptions');
-    return savedSubscriptions ? JSON.parse(savedSubscriptions) : [];
-  });
-  const [isViewingFeed, setIsViewingFeed] = useState(true);
-
   const [workspaceCards, setWorkspaceCards] = useState<WorkspaceCard[]>(() => {
     const saved = localStorage.getItem('workspaceCards');
     return saved ? JSON.parse(saved) : [];
@@ -137,7 +117,6 @@ export const useAppLogic = () => {
 
   const [exportDataModalOpen, setExportDataModalOpen] = useState(false);
   const [exportDataJson, setExportDataJson] = useState('');
-  const [youtubeTutorialModalOpen, setYoutubeTutorialModalOpen] = useState(false);
 
   const menuContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -160,7 +139,11 @@ export const useAppLogic = () => {
     }
   }, [activeEngineId]);
 
-  useEffect(() => { localStorage.setItem('youtubeApiKey', youtubeApiKey); }, [youtubeApiKey]);
+  useEffect(() => {
+    localStorage.removeItem('youtubeApiKey');
+    localStorage.removeItem('userSubscriptions');
+    localStorage.removeItem('fontPreference');
+  }, []);
   useEffect(() => { localStorage.setItem('isMonochromeMode', String(isMonochromeMode)); }, [isMonochromeMode]);
   useEffect(() => { localStorage.setItem('workspaceSearchFallback', String(workspaceSearchFallback)); }, [workspaceSearchFallback]);
   useEffect(() => {
@@ -171,7 +154,6 @@ export const useAppLogic = () => {
       setMusicInputError('Não foi possível salvar a playlist neste dispositivo.');
     }
   }, [musicTracks]);
-  useEffect(() => { localStorage.setItem('userSubscriptions', JSON.stringify(userSubscriptions)); }, [userSubscriptions]);
   useEffect(() => { localStorage.setItem('themePreference', themePreference); }, [themePreference]);
   useEffect(() => { localStorage.setItem('workspaceCards', JSON.stringify(workspaceCards)); }, [workspaceCards]);
   useEffect(() => { if (!envGeminiKey) localStorage.setItem('geminiApiKey', geminiApiKey); }, [geminiApiKey, envGeminiKey]);
@@ -200,97 +182,6 @@ export const useAppLogic = () => {
     const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
     setShowScrollButton(scrollHeight - scrollTop - clientHeight >= 100);
   }, []);
-
-  const toggleChannelSubscription = useCallback((channel: Subscription) => {
-    setUserSubscriptions(prev => prev.some(s => s.id === channel.id) ? prev.filter(s => s.id !== channel.id) : [...prev, channel]);
-  }, []);
-
-  const formatYouTubeError = useCallback((error: unknown) => {
-    const raw = error instanceof Error ? error.message : String(error || 'Erro desconhecido');
-    const text = raw.toLowerCase();
-
-    if (!youtubeApiKey || youtubeApiKey.trim() === '') {
-      return {
-        message: 'A chave do YouTube está vazia.',
-        details: 'Insira a chave em Configurações > YouTube API Key.'
-      };
-    }
-
-    if (text.includes('quota') || text.includes('daily limit') || text.includes('rate limit')) {
-      return {
-        message: 'A API do YouTube excedeu a cota.',
-        details: 'Verifique o limite de uso no Google Cloud Console.'
-      };
-    }
-
-    if (text.includes('forbidden') || text.includes('403') || text.includes('permission') || text.includes('disabled')) {
-      return {
-        message: 'A API do YouTube foi bloqueada ou está desativada.',
-        details: 'Confirme se a YouTube Data API v3 está ativada e se a chave não está bloqueada por IP/restrição.'
-      };
-    }
-
-    if (text.includes('key') || text.includes('api key') || text.includes('invalid key') || text.includes('authentication')) {
-      return {
-        message: 'A chave do YouTube está inválida ou rejeitada.',
-        details: 'Verifique se a chave foi copiada corretamente e se ela pertence ao projeto correto.'
-      };
-    }
-
-    return {
-      message: 'A busca do YouTube falhou.',
-      details: raw
-    };
-  }, [youtubeApiKey]);
-
-  const loadUserSubscriptionFeed = useCallback(async () => {
-    if (!youtubeApiKey || youtubeApiKey.trim() === '') {
-      setYoutubeStatus({
-        type: 'error',
-        message: 'A chave do YouTube está vazia.',
-        details: 'Insira a chave em Configurações > YouTube API Key.'
-      });
-      return;
-    }
-
-    if (userSubscriptions.length === 0) {
-      setYoutubeStatus({
-        type: 'success',
-        message: 'Você ainda não segue canais.',
-        details: 'Adicione canais para o feed aparecer aqui.'
-      });
-      return;
-    }
-
-    setIsContentLoading(true);
-    setIsViewingFeed(true);
-    setHasPerformedSearch(true);
-    setVideoResultsList([]);
-    setYoutubeStatus({ type: 'loading', message: 'Carregando vídeos do feed...', details: 'Buscando os últimos vídeos dos canais seguidos.' });
-
-    try {
-      const feedData = await fetchYouTubeFeed(userSubscriptions.map(sub => sub.id), youtubeApiKey);
-      setVideoResultsList(feedData.items);
-      setNextPageToken(feedData.nextPageToken);
-      setYoutubeStatus({
-        type: feedData.items.length > 0 ? 'success' : 'idle',
-        message: feedData.items.length > 0 ? 'Feed carregado com sucesso.' : 'Nenhum vídeo foi encontrado neste feed.',
-        details: feedData.items.length > 0 ? 'Os vídeos do feed apareceram na interface.' : 'Pode ser que os canais não tenham vídeos públicos recentes.'
-      });
-    } catch (error) {
-      const parsed = formatYouTubeError(error);
-      setYoutubeStatus({ type: 'error', message: parsed.message, details: parsed.details });
-      console.error(error);
-    } finally {
-      setIsContentLoading(false);
-    }
-  }, [youtubeApiKey, userSubscriptions, formatYouTubeError]);
-
-  useEffect(() => {
-    if (activeEngineId === 'youtube' && youtubeApiKey && userSubscriptions.length > 0 && !hasPerformedSearch) {
-      loadUserSubscriptionFeed();
-    }
-  }, [activeEngineId, youtubeApiKey, userSubscriptions, hasPerformedSearch, loadUserSubscriptionFeed]);
 
   useEffect(() => {
     function handleClickOutsideMenu(event: MouseEvent) {
@@ -425,7 +316,6 @@ export const useAppLogic = () => {
       return;
     }
     if (!searchQuery.trim()) {
-      if (activeEngineId === 'youtube' && userSubscriptions.length > 0) loadUserSubscriptionFeed();
       return;
     }
     if (activeEngineId === 'music') {
@@ -473,84 +363,12 @@ export const useAppLogic = () => {
       }
       return;
     }
-    if (activeEngineId === 'youtube' && youtubeApiKey) {
-      setIsContentLoading(true);
-      setIsViewingFeed(false);
-      setVideoResultsList([]);
-      setChannelResultsList([]);
-      setHasPerformedSearch(true);
-      setSelectedChannelId(null);
-      setYoutubeStatus({ type: 'loading', message: 'Buscando vídeos no YouTube...', details: `Consulta: ${searchQuery}` });
-      try {
-        const [channelsData, videosData] = await Promise.all([
-          fetchYouTubeChannels(searchQuery, youtubeApiKey),
-          fetchYouTubeVideos(searchQuery, youtubeApiKey)
-        ]);
-        setChannelResultsList(channelsData);
-        setVideoResultsList(videosData.items);
-        setNextPageToken(videosData.nextPageToken);
-        setYoutubeStatus({
-          type: videosData.items.length > 0 ? 'success' : 'idle',
-          message: videosData.items.length > 0 ? 'Busca concluída com sucesso.' : 'Nenhum vídeo encontrado para esta busca.',
-          details: videosData.items.length > 0 ? 'Os cards de vídeo foram carregados.' : 'Tente outra palavra-chave ou verifique a chave da API.'
-        });
-      } catch (error) {
-        const parsed = formatYouTubeError(error);
-        setYoutubeStatus({ type: 'error', message: parsed.message, details: parsed.details });
-        console.error(error);
-      } finally {
-        setIsContentLoading(false);
-      }
-    } else {
-      window.location.href = currentActiveEngine.url + encodeURIComponent(searchQuery);
-    }
-  }, [searchQuery, activeEngineId, youtubeApiKey, userSubscriptions, loadUserSubscriptionFeed, currentActiveEngine, workspaceSearchFallback, lastSearchEngineId, isAiMode, attachments, chatMessages, geminiApiKey, geminiModel, musicTracks, clearMusicInputError]);
-
-  const handleChannelSelection = useCallback(async (channelId: string) => {
-    setIsContentLoading(true);
-    setSelectedChannelId(channelId);
-    setVideoResultsList([]);
-    try {
-      const channelVideosData = await fetchYouTubeVideosByChannel(channelId, youtubeApiKey);
-      setVideoResultsList(channelVideosData.items);
-      setNextPageToken(channelVideosData.nextPageToken);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsContentLoading(false);
-    }
-  }, [youtubeApiKey]);
-
-  const loadMoreVideos = useCallback(async () => {
-    if (!nextPageToken || isContentLoading || !youtubeApiKey) return;
-    setIsContentLoading(true);
-    setYoutubeStatus({ type: 'loading', message: 'Carregando mais vídeos...', details: 'Buscando próxima página do YouTube.' });
-    try {
-      let moreVideosData;
-      if (selectedChannelId) {
-        moreVideosData = await fetchYouTubeVideosByChannel(selectedChannelId, youtubeApiKey, nextPageToken);
-      } else {
-        moreVideosData = await fetchYouTubeVideos(searchQuery, youtubeApiKey, nextPageToken);
-      }
-      setVideoResultsList(prev => [...prev, ...moreVideosData.items]);
-      setNextPageToken(moreVideosData.nextPageToken);
-      setYoutubeStatus({
-        type: moreVideosData.items.length > 0 ? 'success' : 'idle',
-        message: moreVideosData.items.length > 0 ? 'Mais vídeos carregados.' : 'Nenhum vídeo adicional foi encontrado.',
-        details: 'A próxima página foi consultada com sucesso.'
-      });
-    } catch (error) {
-      const parsed = formatYouTubeError(error);
-      setYoutubeStatus({ type: 'error', message: parsed.message, details: parsed.details });
-      console.error(error);
-    } finally {
-      setIsContentLoading(false);
-    }
-  }, [nextPageToken, isContentLoading, youtubeApiKey, selectedChannelId, searchQuery, formatYouTubeError]);
+    window.location.href = currentActiveEngine.url + encodeURIComponent(searchQuery);
+  }, [searchQuery, activeEngineId, currentActiveEngine, workspaceSearchFallback, lastSearchEngineId, isAiMode, attachments, chatMessages, geminiApiKey, geminiModel, musicTracks, clearMusicInputError]);
 
   const handleExportData = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
-    const data = { preferredEngine: activeEngineId, youtubeApiKey, isMonochromeMode, workspaceSearchFallback, themePreference, workspaceCards, userSubscriptions, musicTracks, lastSearchEngineId, geminiApiKey, geminiModel, chatSessions };
+    const data = { preferredEngine: activeEngineId, isMonochromeMode, workspaceSearchFallback, themePreference, workspaceCards, musicTracks, lastSearchEngineId, geminiApiKey, geminiModel, chatSessions };
     setExportDataJson(JSON.stringify(data, null, 2));
     setExportDataModalOpen(true);
     setIsMenuOpen(false); setIsDataSubmenuOpen(false);
@@ -562,15 +380,13 @@ export const useAppLogic = () => {
     reader.onload = (e) => {
       try {
         const data = JSON.parse(e.target?.result as string);
-        if (data.preferredEngine) setActiveEngineId(data.preferredEngine);
-        if (data.youtubeApiKey !== undefined) setYoutubeApiKey(data.youtubeApiKey);
+        if (data.preferredEngine) setActiveEngineId(data.preferredEngine === 'youtube' ? 'google' : data.preferredEngine);
         if (data.isMonochromeMode !== undefined) setIsMonochromeMode(data.isMonochromeMode);
         if (data.workspaceSearchFallback !== undefined) setWorkspaceSearchFallback(data.workspaceSearchFallback);
         const importedTracks = data.musicTracks ?? data.musicPlaylist;
         if (importedTracks !== undefined) setMusicTracks(normalizeMusicTracks(importedTracks));
         if (data.themePreference) setThemePreference(data.themePreference);
         if (data.workspaceCards) setWorkspaceCards(data.workspaceCards);
-        if (data.userSubscriptions) setUserSubscriptions(data.userSubscriptions);
         if (data.lastSearchEngineId) setLastSearchEngineId(data.lastSearchEngineId);
         if (data.geminiApiKey !== undefined) setGeminiApiKey(data.geminiApiKey);
         if (data.geminiModel !== undefined) setGeminiModel(data.geminiModel);
@@ -587,17 +403,14 @@ export const useAppLogic = () => {
   return {
     activeEngineId, setActiveEngineId, searchQuery, setSearchQuery, isMenuOpen, setIsMenuOpen,
     isSubmenuOpen, setIsSubmenuOpen, isThemeSubmenuOpen, setIsThemeSubmenuOpen, isDataSubmenuOpen, setIsDataSubmenuOpen,
-    youtubeApiKey, setYoutubeApiKey, showSettingsPanel, setShowSettingsPanel, isMonochromeMode, setIsMonochromeMode,
+    showSettingsPanel, setShowSettingsPanel, isMonochromeMode, setIsMonochromeMode,
     workspaceSearchFallback, setWorkspaceSearchFallback, musicTracks, setMusicTracks, musicInputError, setMusicInputError, themePreference, setThemePreference,
     isAiMode, setIsAiMode, geminiApiKey, setGeminiApiKey, geminiModel, setGeminiModel,
     chatSessions, setChatSessions, currentSessionId, setCurrentSessionId, showHistoryModal, setShowHistoryModal,
-    chatMessages, attachments, setAttachments, isAiLoading, showScrollButton, videoResultsList, channelResultsList,
-    isContentLoading, selectedVideoId, setSelectedVideoId, hasPerformedSearch, selectedChannelId, userSubscriptions,
-    isViewingFeed, workspaceCards, setWorkspaceCards, workspaceModalOpen, setWorkspaceModalOpen, editingCardId, setEditingCardId,
-    cardFormData, setCardFormData, exportDataModalOpen, setExportDataModalOpen, exportDataJson, youtubeTutorialModalOpen, setYoutubeTutorialModalOpen,
+    chatMessages, attachments, setAttachments, isAiLoading, showScrollButton,
+    workspaceCards, setWorkspaceCards, workspaceModalOpen, setWorkspaceModalOpen, editingCardId, setEditingCardId,
     menuContainerRef, fileInputRef, fileInputAiRef, chatContainerRef, searchInputRef, messagesEndRef,
-    currentAppliedTheme, currentActiveEngine, handleChatScroll, toggleChannelSubscription, handleFileAttachment,
-    executeSearch, handleChannelSelection, loadMoreVideos, handleExportData, handleImportData, nextPageToken,
-    youtubeStatus
+    currentAppliedTheme, currentActiveEngine, handleChatScroll, handleFileAttachment,
+    executeSearch, handleExportData, handleImportData
   };
 };

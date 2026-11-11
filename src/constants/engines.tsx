@@ -1,5 +1,5 @@
 import React from 'react';
-import { Youtube, Music2, Globe, Bird, Shield, Search, Layout } from 'lucide-react';
+import { Music2, Globe, Bird, Shield, Search, Layout } from 'lucide-react';
 import { SearchEngine } from '../types';
 
 export const webEngines: SearchEngine[] = [
@@ -10,7 +10,6 @@ export const webEngines: SearchEngine[] = [
 ];
 
 export const otherEngines: SearchEngine[] = [
-    { id: 'youtube', name: 'YouTube', url: 'https://www.youtube.com/results?search_query=', icon: <Youtube className="w-4 h-4" /> },
     { id: 'music', name: 'Música', url: 'https://www.youtube.com/results?search_query=', icon: <Music2 className="w-4 h-4" /> },
     { id: 'workspace', name: 'Workspace', url: '', icon: <Layout className="w-4 h-4" /> },
 ];
