@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { webEngines, allEngines } from '../constants/engines';
-import { WorkspaceCard, SearchEngine, MusicTrack } from '../types';
+import { WorkspaceCard, SearchEngine, MusicTrack, NoteCard, NoteSize, NotesSearchMode } from '../types';
 import { ThemePreference } from '../constants/themeClasses';
 
 export type ChatSession = {
@@ -55,6 +55,30 @@ const readMusicTracks = (): MusicTrack[] => {
   }
 };
 
+const normalizeNotes = (notes: unknown): NoteCard[] => {
+  if (!Array.isArray(notes)) return [];
+  return notes.flatMap((note): NoteCard[] => {
+    if (typeof note !== 'object' || note === null) return [];
+    const candidate = note as Record<string, unknown>;
+    if (
+      typeof candidate.id !== 'string' ||
+      typeof candidate.title !== 'string' ||
+      typeof candidate.content !== 'string'
+    ) return [];
+    return [{ id: candidate.id, title: candidate.title, content: candidate.content }];
+  });
+};
+
+const readNotes = (): NoteCard[] => {
+  try {
+    const savedNotes = localStorage.getItem('notes');
+    return normalizeNotes(savedNotes ? JSON.parse(savedNotes) : []);
+  } catch (error) {
+    console.error('Não foi possível carregar as notas salvas.', error);
+    return [];
+  }
+};
+
 /**
  * Custom hook para gerenciar toda a lógica de estado do App
  */
@@ -73,6 +97,12 @@ export const useAppLogic = () => {
   const [workspaceSearchFallback, setWorkspaceSearchFallback] = useState(() => localStorage.getItem('workspaceSearchFallback') === 'true');
   const [musicTracks, setMusicTracks] = useState<MusicTrack[]>(readMusicTracks);
   const [musicInputError, setMusicInputError] = useState('');
+  const [notes, setNotes] = useState<NoteCard[]>(readNotes);
+  const [noteSize, setNoteSize] = useState<NoteSize>(() => {
+    const saved = localStorage.getItem('noteSize');
+    return saved === 'small' || saved === 'large' ? saved : 'medium';
+  });
+  const [notesSearchMode, setNotesSearchMode] = useState<NotesSearchMode>(() => localStorage.getItem('notesSearchMode') === 'web' ? 'web' : 'title');
   const musicInputErrorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [themePreference, setThemePreference] = useState<ThemePreference>(() => (localStorage.getItem('themePreference') as ThemePreference) || 'system');
   const [lastSearchEngineId, setLastSearchEngineId] = useState(() => localStorage.getItem('lastSearchEngineId') || 'google');
@@ -154,6 +184,15 @@ export const useAppLogic = () => {
       setMusicInputError('Não foi possível salvar a playlist neste dispositivo.');
     }
   }, [musicTracks]);
+  useEffect(() => {
+    try {
+      localStorage.setItem('notes', JSON.stringify(notes));
+    } catch (error) {
+      console.error('Não foi possível salvar as notas.', error);
+    }
+  }, [notes]);
+  useEffect(() => { localStorage.setItem('noteSize', noteSize); }, [noteSize]);
+  useEffect(() => { localStorage.setItem('notesSearchMode', notesSearchMode); }, [notesSearchMode]);
   useEffect(() => { localStorage.setItem('themePreference', themePreference); }, [themePreference]);
   useEffect(() => { localStorage.setItem('workspaceCards', JSON.stringify(workspaceCards)); }, [workspaceCards]);
   useEffect(() => { if (!envGeminiKey) localStorage.setItem('geminiApiKey', geminiApiKey); }, [geminiApiKey, envGeminiKey]);
@@ -363,12 +402,19 @@ export const useAppLogic = () => {
       }
       return;
     }
+    if (activeEngineId === 'notes') {
+      if (notesSearchMode === 'web') {
+        const searchEngine = webEngines.find(engine => engine.id === lastSearchEngineId) || webEngines[0];
+        window.location.href = searchEngine.url + encodeURIComponent(searchQuery);
+      }
+      return;
+    }
     window.location.href = currentActiveEngine.url + encodeURIComponent(searchQuery);
-  }, [searchQuery, activeEngineId, currentActiveEngine, workspaceSearchFallback, lastSearchEngineId, isAiMode, attachments, chatMessages, geminiApiKey, geminiModel, musicTracks, clearMusicInputError]);
+  }, [searchQuery, activeEngineId, currentActiveEngine, workspaceSearchFallback, lastSearchEngineId, isAiMode, attachments, chatMessages, geminiApiKey, geminiModel, musicTracks, notesSearchMode, clearMusicInputError]);
 
   const handleExportData = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
-    const data = { preferredEngine: activeEngineId, isMonochromeMode, workspaceSearchFallback, themePreference, workspaceCards, musicTracks, lastSearchEngineId, geminiApiKey, geminiModel, chatSessions };
+    const data = { preferredEngine: activeEngineId, isMonochromeMode, workspaceSearchFallback, themePreference, workspaceCards, musicTracks, notes, noteSize, notesSearchMode, lastSearchEngineId, geminiApiKey, geminiModel, chatSessions };
     setExportDataJson(JSON.stringify(data, null, 2));
     setExportDataModalOpen(true);
     setIsMenuOpen(false); setIsDataSubmenuOpen(false);
@@ -391,6 +437,9 @@ export const useAppLogic = () => {
         if (data.geminiApiKey !== undefined) setGeminiApiKey(data.geminiApiKey);
         if (data.geminiModel !== undefined) setGeminiModel(data.geminiModel);
         if (data.chatSessions) setChatSessions(data.chatSessions);
+        if (data.notes !== undefined) setNotes(normalizeNotes(data.notes));
+        if (data.noteSize === 'small' || data.noteSize === 'medium' || data.noteSize === 'large') setNoteSize(data.noteSize);
+        if (data.notesSearchMode === 'title' || data.notesSearchMode === 'web') setNotesSearchMode(data.notesSearchMode);
       } catch (error) {
         alert("Arquivo de backup inválido.");
       }
@@ -401,14 +450,17 @@ export const useAppLogic = () => {
   };
 
   return {
-    activeEngineId, setActiveEngineId, searchQuery, setSearchQuery, isMenuOpen, setIsMenuOpen,
+    activeEngineId, setActiveEngineId, searchQuery, setSearchQuery, isMenuOpen, setIsMenuOpen, lastSearchEngineId,
     isSubmenuOpen, setIsSubmenuOpen, isThemeSubmenuOpen, setIsThemeSubmenuOpen, isDataSubmenuOpen, setIsDataSubmenuOpen,
     showSettingsPanel, setShowSettingsPanel, isMonochromeMode, setIsMonochromeMode,
     workspaceSearchFallback, setWorkspaceSearchFallback, musicTracks, setMusicTracks, musicInputError, setMusicInputError, themePreference, setThemePreference,
     isAiMode, setIsAiMode, geminiApiKey, setGeminiApiKey, geminiModel, setGeminiModel,
     chatSessions, setChatSessions, currentSessionId, setCurrentSessionId, showHistoryModal, setShowHistoryModal,
     chatMessages, attachments, setAttachments, isAiLoading, showScrollButton,
-    workspaceCards, setWorkspaceCards, workspaceModalOpen, setWorkspaceModalOpen, editingCardId, setEditingCardId,
+    workspaceCards, setWorkspaceCards, workspaceModalOpen, setWorkspaceModalOpen,
+    editingCardId, setEditingCardId, cardFormData, setCardFormData,
+    exportDataModalOpen, setExportDataModalOpen, exportDataJson,
+    notes, setNotes, noteSize, setNoteSize, notesSearchMode, setNotesSearchMode,
     menuContainerRef, fileInputRef, fileInputAiRef, chatContainerRef, searchInputRef, messagesEndRef,
     currentAppliedTheme, currentActiveEngine, handleChatScroll, handleFileAttachment,
     executeSearch, handleExportData, handleImportData

@@ -21,3 +21,12 @@ export interface MusicTrack {
     title: string;
     url: string;
 }
+
+export interface NoteCard {
+    id: string;
+    title: string;
+    content: string;
+}
+
+export type NoteSize = "small" | "medium" | "large";
+export type NotesSearchMode = "title" | "web";

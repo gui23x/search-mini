@@ -8,6 +8,7 @@ import {
   Database,
   Download,
   Github,
+  Globe,
   Instagram,
   Linkedin,
   Monitor,
@@ -26,12 +27,14 @@ import { webEngines, otherEngines } from "./constants/engines";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { MusicSection } from "./components/MusicSection";
 import { WorkspaceSection } from "./components/WorkspaceSection";
+import { NotesSection } from "./components/NotesSection";
 import { ModalsContainer } from "./components/ModalsContainer";
 
 export default function App() {
   const logic = useAppLogic();
   const tc = themeClasses[logic.currentAppliedTheme];
   const [isCreditsSubmenuOpen, setIsCreditsSubmenuOpen] = React.useState(false);
+  const [showNotesLimitAlert, setShowNotesLimitAlert] = React.useState(false);
   const menuSurfaceClass = `${tc.bg} ${
     logic.currentAppliedTheme === "light" ||
     logic.currentAppliedTheme === "pastel"
@@ -59,12 +62,16 @@ export default function App() {
   const filteredWorkspaceCards = logic.workspaceCards.filter((card) =>
     card.title.toLowerCase().includes(logic.searchQuery.toLowerCase()),
   );
+  const filteredNotes = logic.notesSearchMode === "title"
+    ? logic.notes.filter((note) => note.title.toLowerCase().includes(logic.searchQuery.trim().toLowerCase()))
+    : logic.notes;
   const isWebEngineSelected = webEngines.some(
     (engine) => engine.id === logic.activeEngineId,
   );
   const selectEngine = (engineId: string) => {
     logic.setActiveEngineId(engineId);
     logic.setIsAiMode(false);
+    setShowNotesLimitAlert(false);
     logic.setIsMenuOpen(false);
     logic.setIsSubmenuOpen(false);
     logic.setIsThemeSubmenuOpen(false);
@@ -73,6 +80,22 @@ export default function App() {
   };
   const isTouchInput = () =>
     typeof window !== "undefined" && window.matchMedia("(hover: none)").matches;
+  const addNote = () => {
+    if (logic.notes.filter((note) => !note.content.trim()).length >= 2) {
+      setShowNotesLimitAlert(true);
+      return;
+    }
+    setShowNotesLimitAlert(false);
+    logic.setNotes((previous) => [
+      ...previous,
+      {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        title: "Nova nota",
+        content: "",
+      },
+    ]);
+    logic.setSearchQuery("");
+  };
 
   return (
     <div
@@ -86,10 +109,10 @@ export default function App() {
         className="hidden"
       />
 
-      <main className="flex flex-col items-center p-4 relative min-h-screen">
+      <main className={`flex flex-col items-center p-4 relative ${logic.activeEngineId === "notes" ? "max-sm:h-[100dvh] max-sm:min-h-0 max-sm:overflow-hidden" : "min-h-screen"}`}>
         <motion.div
           layout
-          className={`w-full flex justify-center z-50 ${logic.activeEngineId === "workspace" || logic.activeEngineId === "music" ? "mt-12 sm:mt-20 mb-8" : "mt-[45vh] -translate-y-1/2 mb-0"}`}
+          className={`w-full flex justify-center z-50 ${logic.activeEngineId === "workspace" || logic.activeEngineId === "music" || logic.activeEngineId === "notes" ? "mt-12 sm:mt-20 mb-8" : "mt-[45vh] -translate-y-1/2 mb-0"}`}
         >
           <motion.div
             layout
@@ -155,13 +178,16 @@ export default function App() {
                             }}
                             className={`relative w-full flex items-center justify-between px-3 py-2.5 pl-4 text-left text-[0.85rem] rounded-xl ${isWebEngineSelected ? `${tc.text} ${tc.channelCardSelectedBg}` : tc.buttonText} ${menuItemHoverClass} focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-current before:absolute before:left-2 before:top-2 before:bottom-2 before:w-1 before:rounded-full ${isWebEngineSelected ? selectedIndicatorClass : "before:bg-transparent"}`}
                           >
-                            <span className="flex min-w-0 flex-col items-start">
-                              <span>Web</span>
-                              {isWebEngineSelected && (
-                                <span className="text-[0.68rem] opacity-55">
-                                  {logic.currentActiveEngine.name}
-                                </span>
-                              )}
+                            <span className="flex min-w-0 items-center gap-2.5">
+                              <Globe className="h-[17px] w-[17px] shrink-0 opacity-70" />
+                              <span className="flex min-w-0 flex-col items-start">
+                                <span>Web</span>
+                                {isWebEngineSelected && (
+                                  <span className="text-[0.68rem] opacity-55">
+                                    {logic.currentActiveEngine.name}
+                                  </span>
+                                )}
+                              </span>
                             </span>
                             <ChevronRight className="h-[17px] w-[17px] opacity-50" />
                           </button>
@@ -471,6 +497,8 @@ export default function App() {
                   placeholder={
                     logic.activeEngineId === "music"
                       ? "Cole uma URL do YouTube para adicionar música..."
+                      : logic.activeEngineId === "notes"
+                        ? logic.notesSearchMode === "title" ? "Pesquisar pelo título das notas..." : `Pesquisar no ${webEngines.find((engine) => engine.id === logic.lastSearchEngineId)?.name || "Google"}...`
                       : `Pesquisar no ${logic.currentActiveEngine.name}...`
                   }
                   className={`flex-1 bg-transparent border-none outline-none text-[0.95rem] ${tc.text} ${tc.inputPlaceholder} w-full`}
@@ -489,6 +517,30 @@ export default function App() {
                   )}
                 </div>
               </form>
+
+              {logic.activeEngineId === "notes" && (
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={addNote}
+                    className={`flex h-[42px] w-[42px] items-center justify-center rounded-[14px] border backdrop-blur-xl transition-all hover:-translate-y-0.5 ${tc.searchBoxBg} ${tc.searchBoxBorder} ${tc.buttonText} ${tc.buttonHoverBg}`}
+                    title="Adicionar nota"
+                    aria-label="Adicionar nova nota"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => logic.setShowSettingsPanel(!logic.showSettingsPanel)}
+                    className={`flex h-[42px] w-[42px] items-center justify-center rounded-[14px] border backdrop-blur-xl transition-all hover:-translate-y-0.5 ${tc.searchBoxBg} ${tc.searchBoxBorder} ${tc.buttonText} ${tc.buttonHoverBg}`}
+                    title="Configurações"
+                    aria-label="Configurar notas"
+                    aria-expanded={logic.showSettingsPanel}
+                  >
+                    <Settings className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
 
               {logic.activeEngineId === "workspace" && (
                 <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -527,8 +579,7 @@ export default function App() {
             </div>
 
             <AnimatePresence>
-              {logic.showSettingsPanel &&
-              logic.activeEngineId === "workspace" ? (
+              {logic.showSettingsPanel && logic.activeEngineId === "workspace" ? (
                 <SettingsPanel
                   tc={tc}
                   activeEngineId={logic.activeEngineId}
@@ -538,6 +589,52 @@ export default function App() {
                   setWorkspaceSearchFallback={logic.setWorkspaceSearchFallback}
                   setShowSettingsPanel={logic.setShowSettingsPanel}
                 />
+              ) : logic.showSettingsPanel && logic.activeEngineId === "notes" ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="mt-6 w-full"
+                >
+                  <div className={`space-y-4 rounded-xl p-4 backdrop-blur-md ${tc.settingsPanelBg} ${tc.settingsPanelBorder}`}>
+                    <div className="flex items-center justify-between gap-4">
+                      <label htmlFor="notes-search-mode" className={`text-xs font-medium ${tc.settingsLabelText}`}>
+                        Pesquisar por
+                      </label>
+                      <select
+                        id="notes-search-mode"
+                        value={logic.notesSearchMode}
+                        onChange={(event) => logic.setNotesSearchMode(event.target.value as "title" | "web")}
+                        className={`rounded-lg border px-3 py-2 text-xs outline-none ${tc.settingsInputBg} ${tc.settingsInputBorder} ${tc.text}`}
+                      >
+                        <option value="title">Título dos cards</option>
+                        <option value="web">Busca web</option>
+                      </select>
+                    </div>
+                    <div className={`flex items-center justify-between gap-4 border-t pt-3 ${tc.settingsDivider}`}>
+                      <label htmlFor="note-size" className={`text-xs font-medium ${tc.settingsLabelText}`}>
+                        Tamanho dos cards
+                      </label>
+                      <select
+                        id="note-size"
+                        value={logic.noteSize}
+                        onChange={(event) => logic.setNoteSize(event.target.value as "small" | "medium" | "large")}
+                        className={`rounded-lg border px-3 py-2 text-xs outline-none ${tc.settingsInputBg} ${tc.settingsInputBorder} ${tc.text}`}
+                      >
+                        <option value="small">Pequeno · 5 linhas</option>
+                        <option value="medium">Médio · 8 linhas</option>
+                        <option value="large">Grande · 12 linhas</option>
+                      </select>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => logic.setShowSettingsPanel(false)}
+                      className={`w-full rounded-lg py-2 text-[11px] font-medium transition-colors ${tc.settingsButtonBg} ${tc.settingsButtonHoverBg}`}
+                    >
+                      Fechar configurações
+                    </button>
+                  </div>
+                </motion.div>
               ) : null}
             </AnimatePresence>
           </motion.div>
@@ -563,7 +660,56 @@ export default function App() {
             musicInputError={logic.musicInputError}
           />
         )}
+
+        {!logic.isAiMode && logic.activeEngineId === "notes" && (
+          <NotesSection
+            tc={tc}
+            notes={logic.notes}
+            setNotes={logic.setNotes}
+            noteSize={logic.noteSize}
+            filteredNotes={filteredNotes}
+          />
+        )}
       </main>
+
+      <AnimatePresence>
+        {showNotesLimitAlert && logic.activeEngineId === "notes" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+            onClick={() => setShowNotesLimitAlert(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 8 }}
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="notes-limit-title"
+              aria-describedby="notes-limit-description"
+              className={`w-full max-w-sm rounded-2xl border p-5 shadow-2xl ${tc.menuBg} ${tc.menuBorder}`}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <h2 id="notes-limit-title" className={`text-sm font-semibold ${tc.text}`}>
+                Termine uma nota antes de continuar
+              </h2>
+              <p id="notes-limit-description" className={`mt-2 text-sm leading-6 ${tc.buttonText}`}>
+                Você já tem duas notas sem texto. Escreva em uma delas antes de adicionar outra.
+              </p>
+              <button
+                type="button"
+                autoFocus
+                onClick={() => setShowNotesLimitAlert(false)}
+                className={`mt-4 w-full rounded-lg py-2 text-xs font-medium transition-colors ${tc.settingsButtonBg} ${tc.settingsButtonHoverBg}`}
+              >
+                Entendi
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <ModalsContainer
         tc={tc}

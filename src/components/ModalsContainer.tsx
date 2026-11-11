@@ -36,7 +36,7 @@ export const ModalsContainer: React.FC<ModalsContainerProps> = ({
     <>
       <AnimatePresence>
         {workspaceModalOpen && (
-          <div className="fixed inset-0 z- flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <div
               className="absolute inset-0 bg-black/60 backdrop-blur-sm"
               onClick={() => setWorkspaceModalOpen(false)}
@@ -49,7 +49,7 @@ export const ModalsContainer: React.FC<ModalsContainerProps> = ({
               onClick={(e) => e.stopPropagation()}
             >
               <h2 className={`text-lg font-bold mb-4 ${tc.text}`}>
-                Configurar Card
+                {editingCardId ? "Configurar Card" : "Adicionar página"}
               </h2>
               <div className="space-y-4">
                 <div>
@@ -134,17 +134,19 @@ export const ModalsContainer: React.FC<ModalsContainerProps> = ({
                 </div>
               </div>
               <div className="flex justify-end gap-2 mt-6">
-                <button
-                  onClick={() => {
-                    setWorkspaceCards(
-                      workspaceCards.filter((c) => c.id !== editingCardId),
-                    );
-                    setWorkspaceModalOpen(false);
-                  }}
-                  className="px-4 py-2 rounded-lg text-xs font-medium text-red-500 hover:bg-red-500/10 transition-colors"
-                >
-                  Remover
-                </button>
+                {editingCardId && (
+                  <button
+                    onClick={() => {
+                      setWorkspaceCards(
+                        workspaceCards.filter((c) => c.id !== editingCardId),
+                      );
+                      setWorkspaceModalOpen(false);
+                    }}
+                    className="px-4 py-2 rounded-lg text-xs font-medium text-red-500 hover:bg-red-500/10 transition-colors"
+                  >
+                    Remover
+                  </button>
+                )}
                 <button
                   onClick={() => setWorkspaceModalOpen(false)}
                   className={`px-4 py-2 rounded-lg text-xs font-medium ${tc.buttonText} ${tc.buttonHoverBg} transition-colors`}
@@ -183,7 +185,7 @@ export const ModalsContainer: React.FC<ModalsContainerProps> = ({
 
       <AnimatePresence>
         {exportDataModalOpen && (
-          <div className="fixed inset-0 z- flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <div
               className="absolute inset-0 bg-black/60 backdrop-blur-sm"
               onClick={() => setExportDataModalOpen(false)}
@@ -216,8 +218,11 @@ export const ModalsContainer: React.FC<ModalsContainerProps> = ({
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
+                    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
                   }}
                   className="p-2.5 rounded-lg text-xs font-medium bg-zinc-700 text-white hover:bg-zinc-600 transition-colors flex items-center justify-center"
+                  title="Baixar backup JSON"
+                  aria-label="Baixar backup JSON"
                 >
                   <Download className="w-5 h-5" />
                 </button>
