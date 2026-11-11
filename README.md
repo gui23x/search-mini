@@ -1,5 +1,5 @@
 <div align="center">
-  <img alt="Search Mini" src="https://i.pinimg.com/originals/9f/85/14/9f85149150ad9e9be7642971bde762b6.png" />
+  <img alt="Search Mini" src="./public/favicon.svg" width="180" />
 
   <br />
 
