@@ -1,5 +1,6 @@
 import React from "react";
 import { motion } from "motion/react";
+import { X } from "lucide-react";
 
 interface SettingsPanelProps {
   tc: any;
@@ -25,10 +26,16 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 }) => {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 10 }}
-      className="mt-6 w-full"
+      initial={{ height: 0, opacity: 0, y: -6, marginTop: 0 }}
+      animate={{ height: "auto", opacity: 1, y: 0, marginTop: 24 }}
+      exit={{ height: 0, opacity: 0, y: -6, marginTop: 0 }}
+      transition={{
+        height: { duration: 0.28, ease: [0.25, 1, 0.5, 1] },
+        opacity: { duration: 0.2 },
+        y: { duration: 0.28, ease: [0.25, 1, 0.5, 1] },
+        marginTop: { duration: 0.28, ease: [0.25, 1, 0.5, 1] },
+      }}
+      className="w-full"
     >
       <div
         className={`rounded-xl p-4 backdrop-blur-md space-y-4 ${tc.settingsPanelBg} ${tc.settingsPanelBorder}`}
@@ -73,9 +80,10 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
         <button
           onClick={() => setShowSettingsPanel(false)}
-          className={`w-full py-2 rounded-lg text-[11px] font-medium transition-colors ${tc.settingsButtonBg} ${tc.settingsButtonHoverBg}`}
+          className={`flex w-full items-center justify-center gap-2 rounded-lg py-2 text-[11px] font-medium transition-colors ${tc.settingsButtonBg} ${tc.settingsButtonHoverBg}`}
         >
-          Salvar Configurações
+          <X aria-hidden="true" className="h-3.5 w-3.5" />
+          Fechar configurações
         </button>
       </div>
     </motion.div>

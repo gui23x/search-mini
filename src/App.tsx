@@ -25,6 +25,7 @@ import { webEngines, otherEngines } from "./constants/engines";
 
 // Sub-componentes modulares desacoplados
 import { SettingsPanel } from "./components/SettingsPanel";
+import { NotesSettingsPanel } from "./components/NotesSettingsPanel";
 import { MusicSection } from "./components/MusicSection";
 import { WorkspaceSection } from "./components/WorkspaceSection";
 import { NotesSection } from "./components/NotesSection";
@@ -109,7 +110,11 @@ export default function App() {
         className="hidden"
       />
 
-      <main className={`flex flex-col items-center p-4 relative ${logic.activeEngineId === "notes" ? "max-sm:h-[100dvh] max-sm:min-h-0 max-sm:overflow-hidden" : "min-h-screen"}`}>
+      <motion.main
+        layout
+        transition={{ layout: { duration: 0.38, ease: [0.25, 1, 0.5, 1] } }}
+        className={`flex flex-col items-center p-4 relative ${logic.activeEngineId === "notes" ? "max-sm:h-[100dvh] max-sm:min-h-0 max-sm:overflow-hidden" : "min-h-screen"}`}
+      >
         <motion.div
           layout
           className={`w-full flex justify-center z-50 ${logic.activeEngineId === "workspace" || logic.activeEngineId === "music" || logic.activeEngineId === "notes" ? "mt-12 sm:mt-20 mb-8" : "mt-[45vh] -translate-y-1/2 mb-0"}`}
@@ -590,51 +595,14 @@ export default function App() {
                   setShowSettingsPanel={logic.setShowSettingsPanel}
                 />
               ) : logic.showSettingsPanel && logic.activeEngineId === "notes" ? (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
-                  className="mt-6 w-full"
-                >
-                  <div className={`space-y-4 rounded-xl p-4 backdrop-blur-md ${tc.settingsPanelBg} ${tc.settingsPanelBorder}`}>
-                    <div className="flex items-center justify-between gap-4">
-                      <label htmlFor="notes-search-mode" className={`text-xs font-medium ${tc.settingsLabelText}`}>
-                        Pesquisar por
-                      </label>
-                      <select
-                        id="notes-search-mode"
-                        value={logic.notesSearchMode}
-                        onChange={(event) => logic.setNotesSearchMode(event.target.value as "title" | "web")}
-                        className={`rounded-lg border px-3 py-2 text-xs outline-none ${tc.settingsInputBg} ${tc.settingsInputBorder} ${tc.text}`}
-                      >
-                        <option value="title">Título dos cards</option>
-                        <option value="web">Busca web</option>
-                      </select>
-                    </div>
-                    <div className={`flex items-center justify-between gap-4 border-t pt-3 ${tc.settingsDivider}`}>
-                      <label htmlFor="note-size" className={`text-xs font-medium ${tc.settingsLabelText}`}>
-                        Tamanho dos cards
-                      </label>
-                      <select
-                        id="note-size"
-                        value={logic.noteSize}
-                        onChange={(event) => logic.setNoteSize(event.target.value as "small" | "medium" | "large")}
-                        className={`rounded-lg border px-3 py-2 text-xs outline-none ${tc.settingsInputBg} ${tc.settingsInputBorder} ${tc.text}`}
-                      >
-                        <option value="small">Pequeno · 5 linhas</option>
-                        <option value="medium">Médio · 8 linhas</option>
-                        <option value="large">Grande · 12 linhas</option>
-                      </select>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => logic.setShowSettingsPanel(false)}
-                      className={`w-full rounded-lg py-2 text-[11px] font-medium transition-colors ${tc.settingsButtonBg} ${tc.settingsButtonHoverBg}`}
-                    >
-                      Fechar configurações
-                    </button>
-                  </div>
-                </motion.div>
+                <NotesSettingsPanel
+                  tc={tc}
+                  notesSearchMode={logic.notesSearchMode}
+                  setNotesSearchMode={logic.setNotesSearchMode}
+                  noteSize={logic.noteSize}
+                  setNoteSize={logic.setNoteSize}
+                  setShowSettingsPanel={logic.setShowSettingsPanel}
+                />
               ) : null}
             </AnimatePresence>
           </motion.div>
@@ -670,7 +638,7 @@ export default function App() {
             filteredNotes={filteredNotes}
           />
         )}
-      </main>
+      </motion.main>
 
       <AnimatePresence>
         {showNotesLimitAlert && logic.activeEngineId === "notes" && (

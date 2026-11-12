@@ -16,7 +16,7 @@ export const WorkspaceSection: React.FC<WorkspaceSectionProps> = ({
   tc, isMonochromeMode, filteredWorkspaceCards, setCardFormData, setEditingCardId, setWorkspaceModalOpen, workspaceCards
 }) => {
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full max-w-6xl mt-4">
+    <motion.div layout transition={{ layout: { duration: 0.38, ease: [0.25, 1, 0.5, 1] } }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full max-w-6xl mt-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <AnimatePresence mode="popLayout">
           {filteredWorkspaceCards.map((card, index) => (

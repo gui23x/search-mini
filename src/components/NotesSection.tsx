@@ -17,6 +17,12 @@ const rowCountBySize: Record<NoteSize, number> = {
   large: 12,
 };
 
+const notesViewportHeightBySize: Record<NoteSize, string> = {
+  small: "max-h-[25.75rem]",
+  medium: "max-h-[34.75rem]",
+  large: "max-h-[46.75rem]",
+};
+
 export const NotesSection: React.FC<NotesSectionProps> = ({
   tc,
   notes,
@@ -63,7 +69,7 @@ export const NotesSection: React.FC<NotesSectionProps> = ({
         moveNote(note.id);
       }}
       onDragLeave={() => setDropTargetId((current) => current === note.id ? null : current)}
-      className={`group mb-4 break-inside-avoid rounded-2xl border p-4 transition-shadow ${tc.videoCardBg} ${tc.videoCardBorder} ${dropTargetId === note.id ? "ring-2 ring-blue-400/70" : ""}`}
+      className={`group break-inside-avoid rounded-2xl border p-4 transition-shadow ${tc.videoCardBg} ${tc.videoCardBorder} ${dropTargetId === note.id ? "ring-2 ring-blue-400/70" : ""}`}
     >
       <header className="mb-3 flex items-center gap-2">
         <div className="group/drag relative">
@@ -124,16 +130,22 @@ export const NotesSection: React.FC<NotesSectionProps> = ({
 
   return (
     <motion.section
+      layout
+      transition={{ layout: { duration: 0.38, ease: [0.25, 1, 0.5, 1] } }}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       className="w-full max-w-6xl px-2 max-sm:flex-1 max-sm:min-h-0 max-sm:overflow-y-auto max-sm:overscroll-contain"
       aria-label="Notas"
     >
       {filteredNotes.length > 0 ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <AnimatePresence mode="popLayout">
-            {filteredNotes.map(cardMarkup)}
-          </AnimatePresence>
+        <div
+          className={`notes-scroll-area overflow-y-auto overscroll-contain pr-4 ${notesViewportHeightBySize[noteSize]} max-sm:max-h-none max-sm:overflow-visible`}
+        >
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <AnimatePresence mode="popLayout">
+              {filteredNotes.map(cardMarkup)}
+            </AnimatePresence>
+          </div>
         </div>
       ) : (
         <div className={`mt-8 text-center text-sm ${tc.buttonText}`}>
