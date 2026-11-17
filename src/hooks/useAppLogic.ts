@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { webEngines, allEngines } from '../constants/engines';
-import { WorkspaceCard, SearchEngine, MusicTrack, NoteCard, NoteSize, NotesSearchMode } from '../types';
+import { WorkspaceCard, WorkspaceCardFormData, SearchEngine, MusicTrack, NoteCard, NoteSize, NotesSearchMode } from '../types';
 import { ThemePreference } from '../constants/themeClasses';
 
 export type ChatSession = {
@@ -143,7 +143,9 @@ export const useAppLogic = () => {
   });
   const [workspaceModalOpen, setWorkspaceModalOpen] = useState(false);
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
-  const [cardFormData, setCardFormData] = useState({ title: '', url: '', icon: '', image: '' });
+  const [cardFormData, setCardFormData] = useState<WorkspaceCardFormData>({
+    title: '', url: '', icon: '', image: '', imageLight: '', imageDark: '', dynamicImages: false,
+  });
 
   const [exportDataModalOpen, setExportDataModalOpen] = useState(false);
   const [exportDataJson, setExportDataJson] = useState('');
@@ -194,7 +196,14 @@ export const useAppLogic = () => {
   useEffect(() => { localStorage.setItem('noteSize', noteSize); }, [noteSize]);
   useEffect(() => { localStorage.setItem('notesSearchMode', notesSearchMode); }, [notesSearchMode]);
   useEffect(() => { localStorage.setItem('themePreference', themePreference); }, [themePreference]);
-  useEffect(() => { localStorage.setItem('workspaceCards', JSON.stringify(workspaceCards)); }, [workspaceCards]);
+  useEffect(() => {
+    try {
+      localStorage.setItem('workspaceCards', JSON.stringify(workspaceCards));
+    } catch (error) {
+      console.error('Não foi possível salvar os cards do workspace.', error);
+      alert('Não foi possível salvar os cards. Remova uma imagem ou use um arquivo menor.');
+    }
+  }, [workspaceCards]);
   useEffect(() => { if (!envGeminiKey) localStorage.setItem('geminiApiKey', geminiApiKey); }, [geminiApiKey, envGeminiKey]);
   useEffect(() => { localStorage.setItem('geminiModel', geminiModel); }, [geminiModel]);
   useEffect(() => { localStorage.setItem('chatSessions', JSON.stringify(chatSessions)); }, [chatSessions]);
@@ -391,7 +400,7 @@ export const useAppLogic = () => {
         const newCard: WorkspaceCard = { id: Date.now().toString(), title: name, url: '', icon: '', image: '' };
         setWorkspaceCards(prev => [...prev, newCard]);
         setSearchQuery('');
-        setCardFormData({ title: name, url: '', icon: '', image: '' });
+        setCardFormData({ title: name, url: '', icon: '', image: '', imageLight: '', imageDark: '', dynamicImages: false });
         setEditingCardId(newCard.id);
         setWorkspaceModalOpen(true);
         return;

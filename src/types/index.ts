@@ -13,6 +13,19 @@ export interface WorkspaceCard {
     url: string;
     icon: string;
     image: string;
+    imageLight?: string;
+    imageDark?: string;
+    dynamicImages?: boolean;
+}
+
+export interface WorkspaceCardFormData {
+    title: string;
+    url: string;
+    icon: string;
+    image: string;
+    imageLight: string;
+    imageDark: string;
+    dynamicImages: boolean;
 }
 
 export interface MusicTrack {

@@ -557,6 +557,9 @@ export default function App() {
                         url: "",
                         icon: "",
                         image: "",
+                        imageLight: "",
+                        imageDark: "",
+                        dynamicImages: false,
                       });
                       logic.setEditingCardId(null);
                       logic.setWorkspaceModalOpen(true);
@@ -611,6 +614,7 @@ export default function App() {
         {!logic.isAiMode && logic.activeEngineId === "workspace" && (
           <WorkspaceSection
             tc={tc}
+            currentAppliedTheme={logic.currentAppliedTheme}
             isMonochromeMode={logic.isMonochromeMode}
             filteredWorkspaceCards={filteredWorkspaceCards}
             setCardFormData={logic.setCardFormData}
@@ -681,6 +685,7 @@ export default function App() {
 
       <ModalsContainer
         tc={tc}
+        currentAppliedTheme={logic.currentAppliedTheme}
         workspaceModalOpen={logic.workspaceModalOpen}
         setWorkspaceModalOpen={logic.setWorkspaceModalOpen}
         cardFormData={logic.cardFormData}

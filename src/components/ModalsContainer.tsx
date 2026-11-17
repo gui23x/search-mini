@@ -1,15 +1,18 @@
-import React from "react";
+import React, { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { X, Trash2, Download } from "lucide-react";
+import { Download, Upload } from "lucide-react";
+import { WorkspaceCard, WorkspaceCardFormData } from "../types";
+import { ThemePreference } from "../constants/themeClasses";
 
 interface ModalsContainerProps {
   tc: any;
+  currentAppliedTheme: Exclude<ThemePreference, "system">;
   workspaceModalOpen: boolean;
   setWorkspaceModalOpen: (val: boolean) => void;
-  cardFormData: any;
-  setCardFormData: (data: any) => void;
-  workspaceCards: any[];
-  setWorkspaceCards: (cards: any[]) => void;
+  cardFormData: WorkspaceCardFormData;
+  setCardFormData: React.Dispatch<React.SetStateAction<WorkspaceCardFormData>>;
+  workspaceCards: WorkspaceCard[];
+  setWorkspaceCards: React.Dispatch<React.SetStateAction<WorkspaceCard[]>>;
   editingCardId: string | null;
   exportDataModalOpen: boolean;
   setExportDataModalOpen: (val: boolean) => void;
@@ -21,6 +24,7 @@ interface ModalsContainerProps {
  */
 export const ModalsContainer: React.FC<ModalsContainerProps> = ({
   tc,
+  currentAppliedTheme,
   workspaceModalOpen,
   setWorkspaceModalOpen,
   cardFormData,
@@ -32,6 +36,66 @@ export const ModalsContainer: React.FC<ModalsContainerProps> = ({
   setExportDataModalOpen,
   exportDataJson,
 }) => {
+  const [imageUploadError, setImageUploadError] = useState("");
+  const handleImageFileChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+    field: "image" | "imageLight" | "imageDark",
+  ) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setImageUploadError("Selecione um arquivo de imagem.");
+      return;
+    }
+    if (file.size > 1024 * 1024) {
+      setImageUploadError("A imagem deve ter no máximo 1 MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== "string") {
+        setImageUploadError("Não foi possível ler esta imagem.");
+        return;
+      }
+      const imageData = reader.result;
+      setCardFormData((previous) =>
+        field === "image"
+          ? { ...previous, image: imageData, imageLight: "", imageDark: "" }
+          : { ...previous, image: "", [field]: imageData },
+      );
+      setImageUploadError("");
+    };
+    reader.onerror = () => setImageUploadError("Não foi possível ler esta imagem.");
+    reader.readAsDataURL(file);
+  };
+  const isLightTheme = currentAppliedTheme === "light" || currentAppliedTheme === "pastel";
+  const toggleDynamicImages = () => {
+    setCardFormData((previous) => {
+      if (previous.dynamicImages) {
+        const activeThemeImage = isLightTheme
+          ? previous.imageLight || previous.imageDark
+          : previous.imageDark || previous.imageLight;
+        return {
+          ...previous,
+          dynamicImages: false,
+          image: activeThemeImage || previous.image,
+        };
+      }
+
+      const currentImage = previous.image || previous.imageLight || previous.imageDark;
+      return {
+        ...previous,
+        dynamicImages: true,
+        image: "",
+        imageLight: previous.imageLight || currentImage,
+        imageDark: previous.imageDark || currentImage,
+      };
+    });
+  };
+
   return (
     <>
       <AnimatePresence>
@@ -45,7 +109,7 @@ export const ModalsContainer: React.FC<ModalsContainerProps> = ({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className={`relative w-full max-w-md rounded-2xl p-6 shadow-2xl ${tc.menuBg} ${tc.menuBorder}`}
+              className={`relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl p-6 shadow-2xl ${tc.menuBg} ${tc.menuBorder}`}
               onClick={(e) => e.stopPropagation()}
             >
               <h2 className={`text-lg font-bold mb-4 ${tc.text}`}>
@@ -98,6 +162,9 @@ export const ModalsContainer: React.FC<ModalsContainerProps> = ({
                     placeholder="https://..."
                     className={`w-full rounded-lg px-3 py-2 text-sm outline-none transition-colors ${tc.settingsInputBg} ${tc.settingsInputBorder} ${tc.settingsInputFocusBorder} ${tc.text}`}
                   />
+                  <p className={`mt-1 text-[10px] ${tc.settingsLabelText}`}>
+                    Links de pins do Pinterest (/pin/ID) também exibem uma prévia.
+                  </p>
                 </div>
                 <div>
                   <label
@@ -114,24 +181,151 @@ export const ModalsContainer: React.FC<ModalsContainerProps> = ({
                     className={`w-full rounded-lg px-3 py-2 text-sm outline-none transition-colors ${tc.settingsInputBg} ${tc.settingsInputBorder} ${tc.settingsInputFocusBorder} ${tc.text}`}
                   />
                 </div>
-                <div>
-                  <label
-                    className={`block text-[10px] font-semibold mb-1.5 tracking-wider ${tc.settingsLabelText}`}
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className={`text-xs font-medium ${tc.text}`}>Modo Dinâmico</p>
+                    <p className={`mt-1 text-[10px] ${tc.settingsLabelText}`}>
+                      Usar uma imagem diferente em cada tema
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-label="Ativar Modo Dinâmico de imagens"
+                    aria-checked={cardFormData.dynamicImages}
+                    onClick={toggleDynamicImages}
+                    className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${cardFormData.dynamicImages ? tc.settingsToggleBgOn : tc.settingsToggleBgOff}`}
                   >
-                    Imagem (URL)
-                  </label>
-                  <input
-                    type="text"
-                    value={cardFormData.image}
-                    onChange={(e) =>
-                      setCardFormData({
-                        ...cardFormData,
-                        image: e.target.value,
-                      })
-                    }
-                    className={`w-full rounded-lg px-3 py-2 text-sm outline-none transition-colors ${tc.settingsInputBg} ${tc.settingsInputBorder} ${tc.settingsInputFocusBorder} ${tc.text}`}
-                  />
+                    <span
+                      className={`absolute top-1 h-3 w-3 rounded-full ${tc.settingsToggleCircleBg} transition-all ${cardFormData.dynamicImages ? "left-[21px]" : "left-1"}`}
+                    />
+                  </button>
                 </div>
+                {cardFormData.dynamicImages ? (
+                  <>
+                    <div className="space-y-3">
+                      <label
+                        className={`block text-[10px] font-semibold mb-1.5 tracking-wider ${tc.settingsLabelText}`}
+                      >
+                        Imagem para tema claro/pastel
+                      </label>
+                      <input
+                        type="text"
+                        value={cardFormData.imageLight}
+                        onChange={(e) =>
+                          setCardFormData((previous) => ({
+                            ...previous,
+                            image: "",
+                            imageLight: e.target.value,
+                          }))
+                        }
+                        placeholder="https://... ou importe do computador"
+                        className={`w-full rounded-lg px-3 py-2 text-sm outline-none transition-colors ${tc.settingsInputBg} ${tc.settingsInputBorder} ${tc.settingsInputFocusBorder} ${tc.text}`}
+                      />
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          aria-label="Importar imagem para tema claro/pastel"
+                          onChange={(event) => handleImageFileChange(event, "imageLight")}
+                          className="peer sr-only"
+                          id="workspace-image-light"
+                        />
+                        <label
+                          htmlFor="workspace-image-light"
+                          className={`inline-flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-xs peer-focus-visible:outline peer-focus-visible:outline-2 ${tc.buttonText} ${tc.buttonHoverBg} transition-colors`}
+                        >
+                          <Upload className="h-3.5 w-3.5" />
+                          Importar imagem do computador
+                        </label>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <label
+                        className={`block text-[10px] font-semibold mb-1.5 tracking-wider ${tc.settingsLabelText}`}
+                      >
+                        Imagem para tema escuro/preto
+                      </label>
+                      <input
+                        type="text"
+                        value={cardFormData.imageDark}
+                        onChange={(e) =>
+                          setCardFormData((previous) => ({
+                            ...previous,
+                            image: "",
+                            imageDark: e.target.value,
+                          }))
+                        }
+                        placeholder="https://... ou importe do computador"
+                        className={`w-full rounded-lg px-3 py-2 text-sm outline-none transition-colors ${tc.settingsInputBg} ${tc.settingsInputBorder} ${tc.settingsInputFocusBorder} ${tc.text}`}
+                      />
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          aria-label="Importar imagem para tema escuro/preto"
+                          onChange={(event) => handleImageFileChange(event, "imageDark")}
+                          className="peer sr-only"
+                          id="workspace-image-dark"
+                        />
+                        <label
+                          htmlFor="workspace-image-dark"
+                          className={`inline-flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-xs peer-focus-visible:outline peer-focus-visible:outline-2 ${tc.buttonText} ${tc.buttonHoverBg} transition-colors`}
+                        >
+                          <Upload className="h-3.5 w-3.5" />
+                          Importar imagem do computador
+                        </label>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-3">
+                    <label
+                      className={`block text-[10px] font-semibold mb-1.5 tracking-wider ${tc.settingsLabelText}`}
+                    >
+                      Imagem (URL)
+                    </label>
+                    <input
+                      type="text"
+                      value={cardFormData.image}
+                      onChange={(e) =>
+                        setCardFormData((previous) => ({
+                          ...previous,
+                          image: e.target.value,
+                          imageLight: "",
+                          imageDark: "",
+                        }))
+                      }
+                      placeholder="https://..."
+                      className={`w-full rounded-lg px-3 py-2 text-sm outline-none transition-colors ${tc.settingsInputBg} ${tc.settingsInputBorder} ${tc.settingsInputFocusBorder} ${tc.text}`}
+                    />
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        aria-label="Importar imagem do computador"
+                        onChange={(event) => handleImageFileChange(event, "image")}
+                        className="peer sr-only"
+                        id="workspace-image"
+                      />
+                      <label
+                        htmlFor="workspace-image"
+                        className={`inline-flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-xs peer-focus-visible:outline peer-focus-visible:outline-2 ${tc.buttonText} ${tc.buttonHoverBg} transition-colors`}
+                      >
+                        <Upload className="h-3.5 w-3.5" />
+                        Importar imagem do computador
+                      </label>
+                    </div>
+                  </div>
+                )}
+                <p className={`text-[10px] ${tc.settingsLabelText}`}>
+                  Imagens PNG, JPG ou WebP de até 1 MB ficam salvas neste navegador.
+                </p>
+                {imageUploadError && (
+                  <p role="alert" className="text-xs text-red-500">
+                    {imageUploadError}
+                  </p>
+                )}
               </div>
               <div className="flex justify-end gap-2 mt-6">
                 {editingCardId && (
@@ -155,7 +349,7 @@ export const ModalsContainer: React.FC<ModalsContainerProps> = ({
                 </button>
                 <button
                   onClick={() => {
-                    const finalCard = {
+                    const finalCard: WorkspaceCard = {
                       ...cardFormData,
                       id: editingCardId ?? Date.now().toString(),
                       title: cardFormData.title?.trim() || "Novo Card",
