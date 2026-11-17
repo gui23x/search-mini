@@ -5,6 +5,7 @@ import {
   ChevronUp,
   Eye,
   EyeOff,
+  ExternalLink,
   Music2,
   Pause,
   Play,
@@ -16,7 +17,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { MusicTrack } from "../types";
+import { MusicChapter, MusicTrack } from "../types";
 
 interface MusicSectionProps {
   tc: any;
@@ -33,6 +34,8 @@ interface YouTubePlayer {
   playVideo: () => void;
   seekTo: (seconds: number, allowSeekAhead: boolean) => void;
   getVideoData: () => { title: string };
+  getCurrentTime: () => number;
+  getDuration: () => number;
 }
 
 interface YouTubeApi {
@@ -59,6 +62,36 @@ declare global {
 }
 
 type RepeatMode = "off" | "all" | "one";
+
+const formatTime = (seconds: number) => {
+  const totalSeconds = Math.max(0, Math.floor(seconds));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const remainingSeconds = totalSeconds % 60;
+  const paddedMinutes = hours > 0 ? String(minutes).padStart(2, "0") : String(minutes);
+  const time = `${paddedMinutes}:${String(remainingSeconds).padStart(2, "0")}`;
+  return hours > 0 ? `${hours}:${time}` : time;
+};
+
+const parseChapterDescription = (description: string): MusicChapter[] => {
+  const chapters = description.split(/\r?\n/).flatMap((line): MusicChapter[] => {
+    const match = line.match(/^\s*(?:[-*•]\s*)?((?:\d{1,2}:)?\d{1,2}:\d{2})\s*(?:[-–—|]\s*)?(.+?)\s*$/);
+    if (!match) return [];
+
+    const parts = match[1].split(":").map(Number);
+    const [hours, minutes, seconds] =
+      parts.length === 3 ? parts : [0, parts[0], parts[1]];
+    if (seconds >= 60 || (parts.length === 3 && minutes >= 60)) return [];
+
+    const time = hours * 3600 + minutes * 60 + seconds;
+    return [{ title: match[2].trim(), time }];
+  });
+  const uniqueChapters = new Map<number, MusicChapter>();
+  chapters.forEach((chapter) => {
+    if (!uniqueChapters.has(chapter.time)) uniqueChapters.set(chapter.time, chapter);
+  });
+  return [...uniqueChapters.values()].sort((first, second) => first.time - second.time);
+};
 
 let youtubeApiPromise: Promise<YouTubeApi> | undefined;
 
@@ -169,7 +202,12 @@ const MusicTrackCard: React.FC<{
 
 export const MusicSection: React.FC<MusicSectionProps> = ({ tc, tracks, setTracks, musicInputError }) => {
   const [currentTrackId, setCurrentTrackId] = useState<string | null>(
-    () => tracks[0]?.id ?? null,
+    () => {
+      const savedTrackId = localStorage.getItem("currentMusicTrackId");
+      return tracks.some((track) => track.id === savedTrackId)
+        ? savedTrackId
+        : tracks[0]?.id ?? null;
+    },
   );
   const [isPlaying, setIsPlaying] = useState(false);
   const [repeatMode, setRepeatMode] = useState<RepeatMode>("off");
@@ -179,6 +217,12 @@ export const MusicSection: React.FC<MusicSectionProps> = ({ tc, tracks, setTrack
   const [selectedTrackIds, setSelectedTrackIds] = useState<string[]>([]);
   const [isDeleteConfirmationOpen, setIsDeleteConfirmationOpen] = useState(false);
   const [playerMessage, setPlayerMessage] = useState("");
+  const [playerReady, setPlayerReady] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isChapterEditorOpen, setIsChapterEditorOpen] = useState(false);
+  const [chapterDescription, setChapterDescription] = useState("");
+  const [chapterError, setChapterError] = useState("");
   const playerHostRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YouTubePlayer | null>(null);
   const draggedTrackIdRef = useRef<string | null>(null);
@@ -223,6 +267,7 @@ export const MusicSection: React.FC<MusicSectionProps> = ({ tc, tracks, setTrack
           events: {
             onReady: ({ target }) => {
               playerRef.current = target;
+              setPlayerReady(true);
               const { tracks: savedTracks, currentTrackId: selectedId, isPlaying: shouldPlay } =
                 latestStateRef.current;
               const selectedTrack = savedTracks.find((track) => track.id === selectedId);
@@ -301,10 +346,26 @@ export const MusicSection: React.FC<MusicSectionProps> = ({ tc, tracks, setTrack
 
     return () => {
       cancelled = true;
+      setPlayerReady(false);
       playerRef.current = null;
       createdPlayer?.destroy();
     };
   }, [setTracks]);
+
+  useEffect(() => {
+    if (!playerReady || !playerRef.current) return;
+    const updateProgress = () => {
+      const player = playerRef.current;
+      if (!player) return;
+      const videoDuration = player.getDuration();
+      const videoTime = player.getCurrentTime();
+      if (Number.isFinite(videoDuration)) setDuration(videoDuration);
+      if (Number.isFinite(videoTime)) setCurrentTime(videoTime);
+    };
+    updateProgress();
+    const intervalId = window.setInterval(updateProgress, isPlaying ? 500 : 1500);
+    return () => window.clearInterval(intervalId);
+  }, [playerReady, isPlaying, currentTrack?.videoId]);
 
   useEffect(() => {
     if (!tracks.some((track) => track.id === currentTrackId)) {
@@ -317,7 +378,14 @@ export const MusicSection: React.FC<MusicSectionProps> = ({ tc, tracks, setTrack
   }, [currentTrackId, tracks]);
 
   useEffect(() => {
+    if (currentTrackId) localStorage.setItem("currentMusicTrackId", currentTrackId);
+    else localStorage.removeItem("currentMusicTrackId");
+  }, [currentTrackId]);
+
+  useEffect(() => {
     if (!playerRef.current || !currentTrack) return;
+    setCurrentTime(0);
+    setDuration(0);
     if (isPlaying) playerRef.current.loadVideoById(currentTrack.videoId);
     else playerRef.current.cueVideoById(currentTrack.videoId);
   }, [currentTrack?.videoId]);
@@ -337,6 +405,44 @@ export const MusicSection: React.FC<MusicSectionProps> = ({ tc, tracks, setTrack
     if (isPlaying) playerRef.current?.pauseVideo();
     else if (currentTrack) playerRef.current?.playVideo();
     setIsPlaying((playing) => !playing);
+  };
+
+  const saveChapters = () => {
+    if (!currentTrack) return;
+    const chapters = parseChapterDescription(chapterDescription);
+    if (chapters.length === 0) {
+      setChapterError("Não encontrei capítulos. Cole linhas com horário e nome, como 0:00 Introdução.");
+      return;
+    }
+    setTracks((previousTracks) =>
+      previousTracks.map((track) =>
+        track.id === currentTrack.id ? { ...track, chapters } : track,
+      ),
+    );
+    setChapterError("");
+    setIsChapterEditorOpen(false);
+  };
+
+  const seekTo = (seconds: number) => {
+    playerRef.current?.seekTo(seconds, true);
+    setCurrentTime(seconds);
+  };
+
+  const activeChapter = currentTrack?.chapters?.reduce<MusicChapter | null>(
+    (active, chapter) => chapter.time <= currentTime ? chapter : active,
+    null,
+  );
+  const chapters = currentTrack?.chapters ?? [];
+  const chapterTimelineStyle: React.CSSProperties = {
+    gridTemplateColumns: chapters.map((chapter, index) => {
+      const nextChapter = chapters[index + 1];
+      const segmentLength = Math.max(
+        1,
+        (nextChapter?.time ?? Math.max(duration, chapter.time + 60)) - chapter.time,
+      );
+      return `minmax(12rem, ${segmentLength}fr)`;
+    }).join(" "),
+    minWidth: `max(100%, ${chapters.length * 12}rem)`,
   };
 
   const moveTrack = (direction: -1 | 1) => {
@@ -480,6 +586,16 @@ export const MusicSection: React.FC<MusicSectionProps> = ({ tc, tracks, setTrack
                   referrerPolicy="no-referrer"
                 />
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                <a
+                  href={`https://www.youtube.com/watch?v=${currentTrack.videoId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Abrir ${currentTrack.title} no YouTube`}
+                  title="Abrir no YouTube"
+                  className="absolute right-3 top-3 z-10 rounded-full bg-black/55 p-2 text-white transition-colors hover:bg-black/75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white sm:right-4 sm:top-4"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </a>
                 <div className="absolute bottom-3 left-3 flex max-w-[calc(100%-1.5rem)] items-center gap-2 text-left text-white sm:bottom-4 sm:left-4">
                   <Music2 className="h-4 w-4" />
                   <span className="max-w-[30ch] truncate text-sm font-medium">{currentTrack.title}</span>
@@ -498,6 +614,142 @@ export const MusicSection: React.FC<MusicSectionProps> = ({ tc, tracks, setTrack
             />
           </div>
         </div>
+        {currentTrack && (
+          <div className="mt-6 border-t border-current/10 pt-5">
+            <div className="flex items-center gap-3">
+              <span className={`w-11 text-right text-xs tabular-nums ${tc.videoMetaText}`}>
+                {formatTime(currentTime)}
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={duration || 0}
+                step={1}
+                value={Math.min(currentTime, duration || currentTime)}
+                onChange={(event) => seekTo(Number(event.target.value))}
+                disabled={!playerReady || duration <= 0}
+                aria-label="Progresso da música"
+                aria-valuetext={`${formatTime(currentTime)} de ${formatTime(duration)}`}
+                className={`h-1.5 min-w-0 flex-1 cursor-pointer accent-current disabled:cursor-not-allowed disabled:opacity-40 ${tc.text}`}
+              />
+              <span className={`w-11 text-xs tabular-nums ${tc.videoMetaText}`}>
+                {formatTime(duration)}
+              </span>
+            </div>
+            {chapters.length > 0 && (
+              <div className="mt-4">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <p className={`text-xs font-semibold ${tc.videoMetaText}`}>
+                    {activeChapter?.title ?? "Capítulos"}
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setChapterDescription(chapters.map(
+                          (chapter) => `${formatTime(chapter.time)} ${chapter.title}`,
+                        ).join("\n"));
+                        setChapterError("");
+                        setIsChapterEditorOpen(true);
+                      }}
+                      className={`rounded-md px-2 py-1 text-xs ${tc.buttonText} ${tc.buttonHoverBg}`}
+                    >
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTracks((previousTracks) =>
+                          previousTracks.map((track) =>
+                            track.id === currentTrack.id ? { ...track, chapters: [] } : track,
+                          ),
+                        );
+                        setIsChapterEditorOpen(false);
+                        setChapterDescription("");
+                        setChapterError("");
+                      }}
+                      aria-label="Limpar todos os capítulos"
+                      title="Limpar todos os capítulos"
+                      className={`rounded-md p-1.5 text-red-500 transition-colors hover:bg-red-500/10`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <div
+                  className="music-chapters-scroll-area overflow-x-auto overflow-y-hidden pb-2"
+                  role="group"
+                  aria-label="Capítulos do áudio. Role horizontalmente para ver todos."
+                >
+                  <div className="grid h-20 gap-2" style={chapterTimelineStyle}>
+                    {chapters.map((chapter) => (
+                    <button
+                      key={`${chapter.time}-${chapter.title}`}
+                      type="button"
+                      onClick={() => seekTo(chapter.time)}
+                      aria-current={activeChapter?.time === chapter.time ? "true" : undefined}
+                      title={`${formatTime(chapter.time)} — ${chapter.title}`}
+                      aria-label={`Pular para ${chapter.title}, em ${formatTime(chapter.time)}`}
+                      className={`flex min-w-0 flex-col justify-center overflow-hidden rounded-xl border px-4 text-left text-sm transition-colors ${activeChapter?.time === chapter.time ? `${tc.channelCardSelectedBg} ${tc.channelCardSelectedBorder} ${tc.text}` : `${tc.videoCardBg} ${tc.videoCardBorder} ${tc.buttonText} ${tc.buttonHoverBg}`}`}
+                    >
+                      <span className="truncate text-xs opacity-60">{formatTime(chapter.time)}</span>
+                      <span className="line-clamp-2 font-medium">{chapter.title}</span>
+                    </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+            {(!currentTrack.chapters || currentTrack.chapters.length === 0) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setChapterDescription("");
+                  setChapterError("");
+                  setIsChapterEditorOpen(true);
+                }}
+                className={`mt-3 rounded-lg px-2 py-1 text-xs ${tc.buttonText} ${tc.buttonHoverBg}`}
+              >
+                Adicionar capítulos da descrição
+              </button>
+            )}
+            {isChapterEditorOpen && (
+              <div className="mt-3 space-y-2">
+                <label htmlFor="music-chapter-description" className={`block text-xs ${tc.videoMetaText}`}>
+                  Cole aqui a descrição do YouTube ou as linhas dos capítulos:
+                </label>
+                <textarea
+                  id="music-chapter-description"
+                  value={chapterDescription}
+                  onChange={(event) => setChapterDescription(event.target.value)}
+                  rows={5}
+                  placeholder={"0:00 Introdução\n1:24 Primeira música\n4:10 Segunda música"}
+                  className={`w-full resize-y rounded-xl border bg-transparent p-3 text-sm outline-none focus:ring-2 focus:ring-current/30 ${tc.videoCardBorder} ${tc.text}`}
+                />
+                {chapterError && <p role="alert" className="text-xs text-red-500">{chapterError}</p>}
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsChapterEditorOpen(false);
+                      setChapterError("");
+                    }}
+                    className={`rounded-lg px-3 py-2 text-xs ${tc.buttonText} ${tc.buttonHoverBg}`}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveChapters}
+                    className={`rounded-lg px-3 py-2 text-xs font-medium ${tc.text} ${tc.settingsButtonBg} ${tc.settingsButtonHoverBg}`}
+                  >
+                    Salvar capítulos
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {musicInputError && (

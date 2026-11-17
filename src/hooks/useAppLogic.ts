@@ -42,7 +42,16 @@ const normalizeMusicTracks = (tracks: unknown): MusicTrack[] => {
     }
     seenVideoIds.add(track.videoId);
     return true;
-  });
+  }).map((track) => ({
+    ...track,
+    chapters: Array.isArray(track.chapters)
+      ? track.chapters.filter((chapter) =>
+        typeof chapter?.title === 'string' &&
+        Number.isFinite(chapter.time) &&
+        chapter.time >= 0
+      )
+      : undefined,
+  }));
 };
 
 const readMusicTracks = (): MusicTrack[] => {

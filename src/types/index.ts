@@ -33,6 +33,12 @@ export interface MusicTrack {
     videoId: string;
     title: string;
     url: string;
+    chapters?: MusicChapter[];
+}
+
+export interface MusicChapter {
+    title: string;
+    time: number;
 }
 
 export interface NoteCard {

@@ -16,7 +16,7 @@ O Search Mini reúne diferentes formas de pesquisar e organizar conteúdo em uma
 ## Recursos
 
 - **Busca na Web:** Google, DuckDuckGo, Brave e Bing em um único seletor.
-- **Música:** crie uma playlist a partir de URLs do YouTube. Reordene faixas, controle a reprodução, use repetição e modo aleatório, e organize a lista sem duplicatas.
+- **Música:** crie uma playlist a partir de URLs do YouTube. Reordene faixas, controle a reprodução pela barra de progresso, use repetição e modo aleatório e organize a lista sem duplicatas. Para vídeos com várias músicas, cole a descrição para extrair e navegar pelos capítulos.
 - **Workspace:** salve atalhos para seus sites. Digite `add: Nome do favorito` para criar um cartão; consultas comuns podem ser encaminhadas ao mecanismo de busca padrão.
 - **Notas:** crie notas em texto puro, reorganize os cartões arrastando e escolha a altura dos campos entre 5, 8 ou 12 linhas. A pesquisa filtra títulos ou encaminha a consulta ao buscador web selecionado. No celular, os cartões rolam em uma área própria para manter a busca visível. Digitar `- ` no início de uma linha cria um marcador circular de tarefa; há um limite de duas notas vazias.
 - **Temas:** Sistema, Claro, Escuro, Preto e Pastel, com transição suave ao trocar a aparência.

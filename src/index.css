@@ -42,3 +42,28 @@
 .notes-scroll-area::-webkit-scrollbar-thumb:hover {
   background-color: color-mix(in srgb, currentColor 55%, transparent);
 }
+
+.music-chapters-scroll-area {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, currentColor 32%, transparent) transparent;
+}
+
+.music-chapters-scroll-area::-webkit-scrollbar {
+  height: 9px;
+}
+
+.music-chapters-scroll-area::-webkit-scrollbar-track {
+  background: transparent;
+  margin-inline: 0.75rem;
+}
+
+.music-chapters-scroll-area::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 9999px;
+  background-color: color-mix(in srgb, currentColor 32%, transparent);
+  background-clip: padding-box;
+}
+
+.music-chapters-scroll-area::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, currentColor 55%, transparent);
+}
