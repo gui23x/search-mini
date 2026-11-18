@@ -1,5 +1,5 @@
 import React, { DragEvent, useEffect, useMemo, useRef, useState } from "react";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import {
   ChevronDown,
   ChevronUp,
@@ -212,7 +212,9 @@ export const MusicSection: React.FC<MusicSectionProps> = ({ tc, tracks, setTrack
   const [isPlaying, setIsPlaying] = useState(false);
   const [repeatMode, setRepeatMode] = useState<RepeatMode>("off");
   const [isShuffleOn, setIsShuffleOn] = useState(false);
-  const [isPlaylistVisible, setIsPlaylistVisible] = useState(true);
+  const [isPlaylistVisible, setIsPlaylistVisible] = useState(
+    () => localStorage.getItem("musicPlaylistVisible") !== "false",
+  );
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedTrackIds, setSelectedTrackIds] = useState<string[]>([]);
   const [isDeleteConfirmationOpen, setIsDeleteConfirmationOpen] = useState(false);
@@ -381,6 +383,10 @@ export const MusicSection: React.FC<MusicSectionProps> = ({ tc, tracks, setTrack
     if (currentTrackId) localStorage.setItem("currentMusicTrackId", currentTrackId);
     else localStorage.removeItem("currentMusicTrackId");
   }, [currentTrackId]);
+
+  useEffect(() => {
+    localStorage.setItem("musicPlaylistVisible", String(isPlaylistVisible));
+  }, [isPlaylistVisible]);
 
   useEffect(() => {
     if (!playerRef.current || !currentTrack) return;
@@ -811,85 +817,101 @@ export const MusicSection: React.FC<MusicSectionProps> = ({ tc, tracks, setTrack
         </div>
       </div>
 
-      {isPlaylistVisible && isSelectionMode && tracks.length > 0 && (
-        <div className={`mb-3 flex items-center justify-between rounded-xl border px-3 py-2 text-xs ${tc.videoCardBorder} ${tc.videoMetaText}`}>
-          <span>Selecione os cards que deseja remover.</span>
-          <button
-            type="button"
-            onClick={() =>
-              setSelectedTrackIds((selectedIds) =>
-                selectedIds.length === tracks.length ? [] : tracks.map((track) => track.id),
-              )
-            }
-            className={`rounded-md px-2 py-1 ${tc.text} ${tc.buttonHoverBg}`}
+      <AnimatePresence initial={false}>
+        {isPlaylistVisible && (
+          <motion.div
+            key="music-playlist"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{
+              height: { duration: 0.32, ease: [0.22, 1, 0.36, 1] },
+              opacity: { duration: 0.2 },
+            }}
+            className="overflow-hidden"
           >
-            {selectedTrackIds.length === tracks.length ? "Desmarcar todas" : "Selecionar todas"}
-          </button>
-        </div>
-      )}
+            {isSelectionMode && tracks.length > 0 && (
+              <div className={`mb-3 flex items-center justify-between rounded-xl border px-3 py-2 text-xs ${tc.videoCardBorder} ${tc.videoMetaText}`}>
+                <span>Selecione os cards que deseja remover.</span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSelectedTrackIds((selectedIds) =>
+                      selectedIds.length === tracks.length ? [] : tracks.map((track) => track.id),
+                    )
+                  }
+                  className={`rounded-md px-2 py-1 ${tc.text} ${tc.buttonHoverBg}`}
+                >
+                  {selectedTrackIds.length === tracks.length ? "Desmarcar todas" : "Selecionar todas"}
+                </button>
+              </div>
+            )}
 
-      {isPlaylistVisible && tracks.length === 0 ? (
-        <div className={`rounded-2xl border border-dashed p-8 text-center text-sm ${tc.videoCardBorder} ${tc.videoMetaText}`}>
-          Adicione links de vídeos ou músicas do YouTube para montar sua playlist.
-        </div>
-      ) : isPlaylistVisible && tracks.length > 0 ? (
-        <div
-          className="mx-auto max-h-[320px] w-full max-w-4xl overflow-y-auto overscroll-contain rounded-2xl pr-2 sm:max-h-[360px]"
-          role="region"
-          aria-label="Playlist. Arraste os cartões para mudar a ordem."
-        >
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {tracks.map((track) => (
-            <MusicTrackCard
-              key={track.id}
-              track={track}
-              active={track.id === currentTrackId}
-              tc={tc}
-              isShuffleOn={isShuffleOn}
-              selectionMode={isSelectionMode}
-              isSelected={selectedTrackIds.includes(track.id)}
-              isDropTarget={dropTargetTrackId === track.id}
-              onSelect={() => selectTrack(track)}
-              onToggleSelection={() =>
-                setSelectedTrackIds((selectedIds) =>
-                  selectedIds.includes(track.id)
-                    ? selectedIds.filter((id) => id !== track.id)
-                    : [...selectedIds, track.id],
-                )
-              }
-              onMove={(direction) => {
-                const index = tracks.findIndex((item) => item.id === track.id);
-                const targetIndex = index + direction;
-                if (targetIndex < 0 || targetIndex >= tracks.length || isShuffleOn || isSelectionMode) return;
-                reorderTrack(track.id, tracks[targetIndex].id);
-              }}
-              onDragStart={(event) => {
-                draggedTrackIdRef.current = track.id;
-                event.dataTransfer.effectAllowed = "move";
-                event.dataTransfer.setData("text/plain", track.id);
-              }}
-              onDragEnd={() => {
-                draggedTrackIdRef.current = null;
-                setDropTargetTrackId(null);
-              }}
-              onDragOver={(event) => {
-                if (isShuffleOn || isSelectionMode) return;
-                event.preventDefault();
-                event.dataTransfer.dropEffect = "move";
-                setDropTargetTrackId(track.id);
-              }}
-              onDrop={(event) => {
-                event.preventDefault();
-                const sourceId = draggedTrackIdRef.current ?? event.dataTransfer.getData("text/plain");
-                reorderTrack(sourceId, track.id);
-                draggedTrackIdRef.current = null;
-                setDropTargetTrackId(null);
-              }}
-            />
-            ))}
-          </div>
-        </div>
-      ) : null}
+            {tracks.length === 0 ? (
+              <div className={`rounded-2xl border border-dashed p-8 text-center text-sm ${tc.videoCardBorder} ${tc.videoMetaText}`}>
+                Adicione links de vídeos ou músicas do YouTube para montar sua playlist.
+              </div>
+            ) : (
+              <div
+                className="mx-auto max-h-[320px] w-full max-w-4xl overflow-y-auto overscroll-contain rounded-2xl pr-2 sm:max-h-[360px]"
+                role="region"
+                aria-label="Playlist. Arraste os cartões para mudar a ordem."
+              >
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {tracks.map((track) => (
+                    <MusicTrackCard
+                      key={track.id}
+                      track={track}
+                      active={track.id === currentTrackId}
+                      tc={tc}
+                      isShuffleOn={isShuffleOn}
+                      selectionMode={isSelectionMode}
+                      isSelected={selectedTrackIds.includes(track.id)}
+                      isDropTarget={dropTargetTrackId === track.id}
+                      onSelect={() => selectTrack(track)}
+                      onToggleSelection={() =>
+                        setSelectedTrackIds((selectedIds) =>
+                          selectedIds.includes(track.id)
+                            ? selectedIds.filter((id) => id !== track.id)
+                            : [...selectedIds, track.id],
+                        )
+                      }
+                      onMove={(direction) => {
+                        const index = tracks.findIndex((item) => item.id === track.id);
+                        const targetIndex = index + direction;
+                        if (targetIndex < 0 || targetIndex >= tracks.length || isShuffleOn || isSelectionMode) return;
+                        reorderTrack(track.id, tracks[targetIndex].id);
+                      }}
+                      onDragStart={(event) => {
+                        draggedTrackIdRef.current = track.id;
+                        event.dataTransfer.effectAllowed = "move";
+                        event.dataTransfer.setData("text/plain", track.id);
+                      }}
+                      onDragEnd={() => {
+                        draggedTrackIdRef.current = null;
+                        setDropTargetTrackId(null);
+                      }}
+                      onDragOver={(event) => {
+                        if (isShuffleOn || isSelectionMode) return;
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = "move";
+                        setDropTargetTrackId(track.id);
+                      }}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        const sourceId = draggedTrackIdRef.current ?? event.dataTransfer.getData("text/plain");
+                        reorderTrack(sourceId, track.id);
+                        draggedTrackIdRef.current = null;
+                        setDropTargetTrackId(null);
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
       {isDeleteConfirmationOpen && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"

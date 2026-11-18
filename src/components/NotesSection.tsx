@@ -69,7 +69,7 @@ export const NotesSection: React.FC<NotesSectionProps> = ({
         moveNote(note.id);
       }}
       onDragLeave={() => setDropTargetId((current) => current === note.id ? null : current)}
-      className={`group break-inside-avoid rounded-2xl border p-4 transition-shadow ${tc.videoCardBg} ${tc.videoCardBorder} ${dropTargetId === note.id ? "ring-2 ring-blue-400/70" : ""}`}
+      className={`group relative z-0 break-inside-avoid rounded-2xl border p-4 transition-shadow hover:z-30 focus-within:z-30 ${tc.videoCardBg} ${tc.videoCardBorder} ${dropTargetId === note.id ? "ring-2 ring-blue-400/70" : ""}`}
     >
       <header className="mb-3 flex items-center gap-2">
         <div className="group/drag relative">
@@ -86,12 +86,11 @@ export const NotesSection: React.FC<NotesSectionProps> = ({
               setDropTargetId(null);
             }}
             aria-label={`Arrastar nota ${note.title || "sem título"}`}
-            title="Arraste para mover o card"
             className={`cursor-grab touch-none rounded-md p-1 opacity-45 hover:opacity-100 active:cursor-grabbing ${tc.buttonText} ${tc.buttonHoverBg}`}
           >
             <GripVertical className="h-4 w-4" />
           </button>
-          <span className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-max -translate-x-1/2 rounded-md bg-black px-2 py-1 text-[10px] text-white opacity-0 shadow-lg transition-opacity group-hover/drag:opacity-100">
+          <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 w-max -translate-x-1/2 rounded-md bg-black px-2 py-1 text-[10px] text-white opacity-0 shadow-lg transition-opacity group-hover/drag:opacity-100">
             Arraste para mover o card
           </span>
         </div>
