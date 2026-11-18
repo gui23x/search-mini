@@ -227,6 +227,8 @@ export const MusicSection: React.FC<MusicSectionProps> = ({ tc, tracks, setTrack
   const [chapterError, setChapterError] = useState("");
   const playerHostRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YouTubePlayer | null>(null);
+  const chaptersScrollRef = useRef<HTMLDivElement>(null);
+  const activeChapterRef = useRef<HTMLButtonElement>(null);
   const draggedTrackIdRef = useRef<string | null>(null);
   const [dropTargetTrackId, setDropTargetTrackId] = useState<string | null>(null);
   const latestStateRef = useRef({
@@ -439,6 +441,25 @@ export const MusicSection: React.FC<MusicSectionProps> = ({ tc, tracks, setTrack
     null,
   );
   const chapters = currentTrack?.chapters ?? [];
+  useEffect(() => {
+    const scrollContainer = chaptersScrollRef.current;
+    const activeChapterElement = activeChapterRef.current;
+    if (!scrollContainer || !activeChapterElement) return;
+
+    const containerBounds = scrollContainer.getBoundingClientRect();
+    const chapterBounds = activeChapterElement.getBoundingClientRect();
+    if (chapterBounds.left < containerBounds.left || chapterBounds.right > containerBounds.right) {
+      scrollContainer.scrollTo({
+        left:
+          scrollContainer.scrollLeft +
+          chapterBounds.left -
+          containerBounds.left -
+          (scrollContainer.clientWidth - chapterBounds.width) / 2,
+        behavior: "smooth",
+      });
+    }
+  }, [activeChapter?.time, currentTrack?.id]);
+
   const chapterTimelineStyle: React.CSSProperties = {
     gridTemplateColumns: chapters.map((chapter, index) => {
       const nextChapter = chapters[index + 1];
@@ -683,6 +704,7 @@ export const MusicSection: React.FC<MusicSectionProps> = ({ tc, tracks, setTrack
                   </div>
                 </div>
                 <div
+                  ref={chaptersScrollRef}
                   className="music-chapters-scroll-area overflow-x-auto overflow-y-hidden pb-2"
                   role="group"
                   aria-label="Capítulos do áudio. Role horizontalmente para ver todos."
@@ -691,12 +713,13 @@ export const MusicSection: React.FC<MusicSectionProps> = ({ tc, tracks, setTrack
                     {chapters.map((chapter) => (
                     <button
                       key={`${chapter.time}-${chapter.title}`}
+                      ref={activeChapter?.time === chapter.time ? activeChapterRef : undefined}
                       type="button"
                       onClick={() => seekTo(chapter.time)}
                       aria-current={activeChapter?.time === chapter.time ? "true" : undefined}
                       title={`${formatTime(chapter.time)} — ${chapter.title}`}
                       aria-label={`Pular para ${chapter.title}, em ${formatTime(chapter.time)}`}
-                      className={`flex min-w-0 flex-col justify-center overflow-hidden rounded-xl border px-4 text-left text-sm transition-colors ${activeChapter?.time === chapter.time ? `${tc.channelCardSelectedBg} ${tc.channelCardSelectedBorder} ${tc.text}` : `${tc.videoCardBg} ${tc.videoCardBorder} ${tc.buttonText} ${tc.buttonHoverBg}`}`}
+                      className={`flex min-w-0 flex-col justify-center overflow-hidden rounded-xl border px-4 text-left text-sm transition-colors ${activeChapter?.time === chapter.time ? `bg-black/10 ${tc.channelCardSelectedBorder} ${tc.text}` : `${tc.videoCardBg} ${tc.videoCardBorder} ${tc.buttonText} ${tc.buttonHoverBg}`}`}
                     >
                       <span className="truncate text-xs opacity-60">{formatTime(chapter.time)}</span>
                       <span className="line-clamp-2 font-medium">{chapter.title}</span>
